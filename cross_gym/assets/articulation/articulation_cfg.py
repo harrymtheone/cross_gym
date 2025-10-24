@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import field
+from typing import Optional
 
 from cross_gym.assets.asset_base import AssetBaseCfg
 from cross_gym.utils.configclass import configclass
@@ -20,9 +20,10 @@ class ArticulationCfg(AssetBaseCfg):
     class_type: type = Articulation
 
     # Asset file
-    file: str | None = None  # Path to URDF/USD file
+    file: Optional[str] = None  # Path to URDF/USD file
 
     # Asset properties
+    @configclass
     class AssetOptionsCfg:
         """Asset loading options."""
         fix_base_link: bool = False
@@ -45,7 +46,7 @@ class ArticulationCfg(AssetBaseCfg):
         use_soft_limits: bool = False
         sim_dof_limit_mul: float = 1.0
 
-    asset_options: AssetOptionsCfg = field(default_factory=AssetOptionsCfg)
+    asset_options: AssetOptionsCfg = AssetOptionsCfg()
 
     # Self collisions
     self_collisions: bool = False

@@ -1,8 +1,7 @@
 """Configuration classes for simulation."""
 from __future__ import annotations
 
-from dataclasses import field
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 
@@ -44,27 +43,27 @@ class RenderCfg:
     """Configuration for rendering settings."""
 
     # Rendering mode
-    rendering_mode: str | None = None  # "performance", "balanced", "quality"
+    rendering_mode: Optional[str] = None  # "performance", "balanced", "quality"
 
     # RT features
-    enable_translucency: bool | None = None
-    enable_reflections: bool | None = None
-    enable_global_illumination: bool | None = None
-    enable_shadows: bool | None = None
-    enable_ambient_occlusion: bool | None = None
-    enable_direct_lighting: bool | None = None
+    enable_translucency: Optional[bool] = None
+    enable_reflections: Optional[bool] = None
+    enable_global_illumination: Optional[bool] = None
+    enable_shadows: Optional[bool] = None
+    enable_ambient_occlusion: Optional[bool] = None
+    enable_direct_lighting: Optional[bool] = None
 
     # Sampling
-    samples_per_pixel: int | None = None
+    samples_per_pixel: Optional[int] = None
 
     # DLSS
-    enable_dlssg: bool | None = None
-    enable_dl_denoiser: bool | None = None
-    dlss_mode: str | None = None
-    antialiasing_mode: str | None = None
+    enable_dlssg: Optional[bool] = None
+    enable_dl_denoiser: Optional[bool] = None
+    dlss_mode: Optional[str] = None
+    antialiasing_mode: Optional[str] = None
 
     # General carb settings
-    carb_settings: dict | None = None
+    carb_settings: Optional[dict] = None
 
 
 @configclass
@@ -89,10 +88,10 @@ class SimulationCfg:
     gravity: Tuple[float, float, float] = (0.0, 0.0, -9.81)
 
     # Physics settings
-    physx: PhysxCfg = field(default_factory=PhysxCfg)
+    physx: PhysxCfg = PhysxCfg()
 
     # Rendering settings
-    render: RenderCfg = field(default_factory=RenderCfg)
+    render: RenderCfg = RenderCfg()
 
     # Simulation control
     headless: bool = True

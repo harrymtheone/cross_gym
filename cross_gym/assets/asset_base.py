@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import field
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import torch
 
@@ -21,9 +20,10 @@ class AssetBaseCfg:
     prim_path: str = "/World/envs/env_.*/Asset"
 
     # Spawning configuration
-    spawn: Callable | None = None  # Spawning function (if creating programmatically)
+    spawn: Optional[Callable] = None  # Spawning function (if creating programmatically)
 
     # Initial state
+    @configclass
     class InitStateCfg:
         """Initial state of the asset."""
         pos: Tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -31,7 +31,7 @@ class AssetBaseCfg:
         lin_vel: Tuple[float, float, float] = (0.0, 0.0, 0.0)
         ang_vel: Tuple[float, float, float] = (0.0, 0.0, 0.0)
 
-    init_state: InitStateCfg = field(default_factory=InitStateCfg)
+    init_state: InitStateCfg = InitStateCfg()
 
     # Collision group (-1 = global collision, 0+ = group ID)
     collision_group: int = 0
@@ -86,7 +86,7 @@ class AssetBase(ABC):
         pass
 
     @abstractmethod
-    def reset(self, env_ids: torch.Tensor | None = None):
+    def reset(self, env_ids: Optional[torch.Tensor] = None):
         """Reset the asset state for specified environments.
         
         Args:

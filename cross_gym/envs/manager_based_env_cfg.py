@@ -1,0 +1,59 @@
+"""Configuration for manager-based environment."""
+
+from __future__ import annotations
+
+from dataclasses import MISSING
+
+from cross_gym.scene import InteractiveSceneCfg
+from cross_gym.sim import SimulationCfg
+from cross_gym.managers import ActionManagerCfg, ObservationManagerCfg, EventManagerCfg
+from cross_gym.utils.configclass import configclass
+
+
+@configclass
+class ManagerBasedEnvCfg:
+    """Configuration for manager-based environment.
+    
+    This is the base configuration for environments that use the manager system.
+    """
+    
+    # Simulation
+    sim: SimulationCfg = MISSING
+    """Simulation configuration."""
+    
+    # Scene
+    scene: InteractiveSceneCfg = MISSING
+    """Scene configuration."""
+    
+    # Managers
+    actions: ActionManagerCfg = MISSING
+    """Action manager configuration."""
+    
+    observations: ObservationManagerCfg = MISSING
+    """Observation manager configuration."""
+    
+    events: Optional[EventManagerCfg] = None
+    """Event manager configuration (optional)."""
+    
+    # Environment settings
+    decimation: int = 1
+    """Number of simulation steps per environment step.
+    
+    The environment step dt = decimation * sim.dt
+    """
+    
+    is_finite_horizon: bool = False
+    """Whether the learning task is treated as a finite or infinite horizon problem.
+    
+    This affects how terminal states are handled in RL algorithms.
+    """
+    
+    # Random seed
+    seed: Optional[int] = None
+    """Random seed for the environment. Default is None."""
+    
+    def validate(self):
+        """Validate the configuration."""
+        if self.decimation < 1:
+            raise ValueError(f"Decimation must be >= 1, got {self.decimation}")
+
