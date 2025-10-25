@@ -185,7 +185,8 @@ class TerrainGenerator:
                     create_rectangle(
                         size=(pad_x, sub_terrain.cfg.size[1]),  # noqa
                         height=0.0,
-                        transform=trimesh.transformations.translation_matrix([cur_x, cur_y, 0])
+                        transform=trimesh.transformations.translation_matrix([cur_x, cur_y, 0]),
+                        up_left_center=True
                     )
                 )
 
@@ -214,8 +215,9 @@ class TerrainGenerator:
                 size=(terrain_width + 2 * border_width, border_width),
                 height=border_height,
                 transform=trimesh.transformations.translation_matrix(
-                    [- border_width, -border_width, 0]
-                )
+                    [-border_width, -border_width, 0]
+                ),
+                up_left_center=True
             ),
             # Top border
             create_rectangle(
@@ -223,7 +225,8 @@ class TerrainGenerator:
                 height=border_height,
                 transform=trimesh.transformations.translation_matrix(
                     [-border_width, terrain_length, 0]
-                )
+                ),
+                up_left_center=True
             ),
             # Left border
             create_rectangle(
@@ -231,7 +234,8 @@ class TerrainGenerator:
                 height=border_height,
                 transform=trimesh.transformations.translation_matrix(
                     [-border_width, 0, 0]
-                )
+                ),
+                up_left_center=True
             ),
             # Right border
             create_rectangle(
@@ -239,7 +243,8 @@ class TerrainGenerator:
                 height=border_height,
                 transform=trimesh.transformations.translation_matrix(
                     [terrain_width, 0, 0]
-                )
+                ),
+                up_left_center=True
             )
         ]
 

@@ -6,6 +6,7 @@ import numpy as np
 import trimesh
 
 from cross_gym.terrains.sub_terrain import SubTerrainBaseCfg, SubTerrain
+from cross_gym.terrains.utils import create_rectangle
 from cross_gym.utils.configclass import configclass
 
 
@@ -21,20 +22,12 @@ class FlatTerrain(SubTerrain):
         Returns:
             Flat rectangular trimesh
         """
-        # Create a simple flat rectangle
-        vertices = np.array([
-            [0, 0, 0],
-            [self.cfg.size[0], 0, 0],
-            [self.cfg.size[0], self.cfg.size[1], 0],
-            [0, self.cfg.size[1], 0],
-        ], dtype=np.float32)
-
-        faces = np.array([
-            [0, 1, 2],
-            [0, 2, 3],
-        ], dtype=np.uint32)
-
-        return trimesh.Trimesh(vertices=vertices, faces=faces)
+        # Use create_rectangle utility for consistency
+        return create_rectangle(
+            size=self.cfg.size,
+            height=0.0,
+            up_left_center=True  # Origin at (0, 0)
+        )
 
     def build_origins(self) -> tuple[float, float, float]:
         """Build spawn origin (center of terrain).

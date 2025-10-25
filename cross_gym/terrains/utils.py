@@ -96,12 +96,17 @@ def trimesh_to_height_map_cuda(
     # Cast rays
     result = scene.cast_rays(rays_tensor)
     hit_t = result['t_hit'].numpy()
+    
+    # Check which rays hit (finite t values)
+    valid = np.isfinite(hit_t)
 
-    # Compute heights
-    heights = ray_start_height - hit_t
+    # Compute heights - use default for misses
+    default_height = -1000.0
+    heights = np.full(hit_t.shape, default_height, dtype=np.float32)
+    heights[valid] = ray_start_height - hit_t[valid]
+    
+    # Reshape and transpose
     heights = heights.reshape(ny, nx)
-
-    # Transpose to match expected format (x, y)
     heights = heights.T
 
     return heights
@@ -155,38 +160,49 @@ def _trimesh_to_height_map_cpu(
 def create_rectangle(
         size: tuple[float, float] = (1.0, 1.0),
         height: float = 0.0,
-        transform: np.ndarray = None
+        transform: np.ndarray = None,
+        up_left_center: bool = True
 ) -> trimesh.Trimesh:
-    """Create a rectangular mesh (for padding/borders).
+    """Create a rectangular trimesh.
     
     Args:
-        size: (length_x, width_y) in meters
-        height: Height of the rectangle
-        transform: 4x4 transformation matrix
+        size: (width, length) in meters
+        height: Z-height of the rectangle
+        transform: Optional 4x4 transformation matrix
+        up_left_center: If True, rectangle origin is at upper-left corner.
+                       If False, rectangle is centered at origin.
         
     Returns:
         Trimesh rectangle
     """
-    length_x, width_y = size
+    width, length = size
+    half_width = width / 2
+    half_length = length / 2
 
-    # Create vertices for a flat rectangle
+    # Create vertices centered at origin
     vertices = np.array([
-        [0, 0, height],
-        [length_x, 0, height],
-        [length_x, width_y, height],
-        [0, width_y, height],
+        [-half_width, -half_length, height],  # bottom-left
+        [half_width, -half_length, height],   # bottom-right
+        [half_width, half_length, height],    # top-right
+        [-half_width, half_length, height],   # top-left
     ], dtype=np.float32)
 
     # Create faces (two triangles)
     faces = np.array([
-        [0, 1, 2],
-        [0, 2, 3],
-    ], dtype=np.int32)
+        [0, 1, 2],  # bottom-left, bottom-right, top-right
+        [0, 2, 3],  # bottom-left, top-right, top-left
+    ], dtype=np.uint32)
 
     # Create mesh
     mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
 
-    # Apply transformation if provided
+    # If up_left_center, move so (0,0) is at upper-left corner
+    if up_left_center:
+        mesh.apply_transform(
+            trimesh.transformations.translation_matrix([half_width, half_length, 0])
+        )
+
+    # Apply additional transformation if provided
     if transform is not None:
         mesh.apply_transform(transform)
 
