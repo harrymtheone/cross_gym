@@ -35,10 +35,10 @@ def alive_reward(env: ManagerBasedEnv) -> torch.Tensor:
 # ============================================================================
 
 def lin_vel_tracking_reward(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    target_x: float = 1.0,
-    target_y: float = 0.0,
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        target_x: float = 1.0,
+        target_y: float = 0.0,
 ) -> torch.Tensor:
     """Reward for tracking desired linear velocity.
     
@@ -53,19 +53,19 @@ def lin_vel_tracking_reward(
     """
     asset = env.scene[asset_name]
     lin_vel = asset.data.root_vel_w
-    
+
     # Error from target
     error_x = lin_vel[:, 0] - target_x
     error_y = lin_vel[:, 1] - target_y
-    
+
     # Reward is negative squared error
-    return -torch.sqrt(error_x**2 + error_y**2)
+    return -torch.sqrt(error_x ** 2 + error_y ** 2)
 
 
 def ang_vel_tracking_reward(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    target_yaw_rate: float = 0.0,
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        target_yaw_rate: float = 0.0,
 ) -> torch.Tensor:
     """Reward for tracking desired angular velocity (yaw rate).
     
@@ -79,12 +79,12 @@ def ang_vel_tracking_reward(
     """
     asset = env.scene[asset_name]
     ang_vel = asset.data.root_ang_vel_w
-    
+
     # Error from target (z-component is yaw rate)
     error = ang_vel[:, 2] - target_yaw_rate
-    
+
     # Reward is negative squared error
-    return -(error**2)
+    return -(error ** 2)
 
 
 # ============================================================================
@@ -103,7 +103,7 @@ def energy_penalty(env: ManagerBasedEnv, asset_name: str = "robot") -> torch.Ten
     """
     asset = env.scene[asset_name]
     torques = asset.data.applied_torques
-    return -torch.sum(torques**2, dim=-1)
+    return -torch.sum(torques ** 2, dim=-1)
 
 
 def torque_penalty(env: ManagerBasedEnv, asset_name: str = "robot") -> torch.Tensor:
@@ -137,22 +137,22 @@ def upright_reward(env: ManagerBasedEnv, asset_name: str = "robot") -> torch.Ten
     """
     asset = env.scene[asset_name]
     quat = asset.data.root_quat_w  # (w, x, y, z)
-    
+
     # Extract z-component of the up vector after rotation
     # For identity quaternion (1,0,0,0), up is (0,0,1)
     # After rotation by quat, up becomes quat_rotate(quat, (0,0,1))
     from cross_gym.utils.math import quat_rotate
     up_vec = torch.tensor([0.0, 0.0, 1.0], device=env.device).repeat(env.num_envs, 1)
     rotated_up = quat_rotate(quat, up_vec)
-    
+
     # Reward is z-component (how much up vector points in +z direction)
     return rotated_up[:, 2]
 
 
 def height_reward(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    target_height: float = 0.5,
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        target_height: float = 0.5,
 ) -> torch.Tensor:
     """Reward for maintaining target height.
     
@@ -166,9 +166,9 @@ def height_reward(
     """
     asset = env.scene[asset_name]
     height = asset.data.root_pos_w[:, 2]
-    
+
     # Negative squared error from target
-    return -(height - target_height)**2
+    return -(height - target_height) ** 2
 
 
 # ============================================================================
@@ -201,9 +201,9 @@ def joint_acc_penalty(env: ManagerBasedEnv, asset_name: str = "robot") -> torch.
         Penalty (num_envs,)
     """
     asset = env.scene[asset_name]
-    
+
     if asset.data.joint_acc is not None:
-        return -torch.sum(asset.data.joint_acc**2, dim=-1)
+        return -torch.sum(asset.data.joint_acc ** 2, dim=-1)
     else:
         # If no acceleration data, return zeros
         return torch.zeros(env.num_envs, device=env.device)
@@ -229,4 +229,3 @@ __all__ = [
     "action_smoothness_reward",
     "joint_acc_penalty",
 ]
-

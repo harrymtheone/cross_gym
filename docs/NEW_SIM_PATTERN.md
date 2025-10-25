@@ -3,6 +3,7 @@
 ## The Problem with Super-Sets
 
 **Old approach (not elegant)**:
+
 ```python
 @configclass
 class SimulationCfg:
@@ -18,6 +19,7 @@ class SimulationCfg:
 ```
 
 **Problems**:
+
 - ❌ Super-set contains parameters that don't apply to all simulators
 - ❌ Confusing - which parameters apply to which simulator?
 - ❌ Error-prone - easy to configure wrong parameters
@@ -133,6 +135,7 @@ self.sim = sim_class(self.cfg.sim)    # Create it!
 ### 3. No Manual Switching
 
 No need for:
+
 ```python
 if cfg.sim.simulator == ISAACGYM:  # ❌ OLD
     sim = IsaacGymContext(...)
@@ -141,6 +144,7 @@ elif cfg.sim.simulator == GENESIS:
 ```
 
 Instead:
+
 ```python
 sim = cfg.sim.class_type(cfg.sim)  # ✅ NEW - Works for any simulator!
 ```
@@ -213,14 +217,14 @@ class NewSimContext(SimulationContext):
 
 ## Comparison
 
-| Aspect | Old (Super-Set) | New (Specific Configs) |
-|--------|----------------|------------------------|
-| **Clarity** | ❌ All parameters mixed | ✅ Only relevant parameters |
-| **Type Safety** | ❌ Weak | ✅ Strong |
-| **Extensibility** | ❌ Modify central config | ✅ Add new config class |
-| **Maintainability** | ❌ Complex | ✅ Simple |
-| **Pattern Consistency** | ❌ Different from assets | ✅ Same as assets |
-| **User Experience** | ❌ Confusing | ✅ Clear |
+| Aspect                  | Old (Super-Set)         | New (Specific Configs)     |
+|-------------------------|-------------------------|----------------------------|
+| **Clarity**             | ❌ All parameters mixed  | ✅ Only relevant parameters |
+| **Type Safety**         | ❌ Weak                  | ✅ Strong                   |
+| **Extensibility**       | ❌ Modify central config | ✅ Add new config class     |
+| **Maintainability**     | ❌ Complex               | ✅ Simple                   |
+| **Pattern Consistency** | ❌ Different from assets | ✅ Same as assets           |
+| **User Experience**     | ❌ Confusing             | ✅ Clear                    |
 
 ---
 

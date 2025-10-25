@@ -14,7 +14,7 @@ def class_to_dict(obj: Any) -> Dict[str, Any]:
     """
     if not hasattr(obj, '__dict__'):
         return obj
-    
+
     result = {}
     for key, val in obj.__dict__.items():
         if key.startswith('_'):
@@ -23,6 +23,5 @@ def class_to_dict(obj: Any) -> Dict[str, Any]:
             result[key] = class_to_dict(val)
         else:
             result[key] = val
-    
-    return result
 
+    return result

@@ -118,7 +118,7 @@ def joint_pos_normalized(env: ManagerBasedEnv, asset_name: str = "robot") -> tor
     """
     asset = env.scene[asset_name]
     pos = asset.data.joint_pos
-    
+
     if asset.dof_pos_limits is not None:
         # Normalize to [-1, 1]
         lower = asset.dof_pos_limits[:, 0]
@@ -146,7 +146,7 @@ def body_pos(env: ManagerBasedEnv, asset_name: str = "robot", body_names: list =
         Body positions (num_envs, num_bodies, 3) or (num_envs, len(body_names), 3)
     """
     asset = env.scene[asset_name]
-    
+
     if body_names is None:
         return asset.data.body_pos_w
     else:
@@ -191,4 +191,3 @@ __all__ = [
     # Episode
     "episode_progress",
 ]
-

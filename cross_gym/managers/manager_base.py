@@ -17,7 +17,7 @@ class ManagerTermBase(ABC):
     - An observation term (computes a specific observation)
     - A reward term (computes a specific reward component)
     """
-    
+
     def __init__(self, cfg: Any, env: ManagerBasedEnv):
         """Initialize the term.
         
@@ -27,7 +27,7 @@ class ManagerTermBase(ABC):
         """
         self.cfg = cfg
         self._env = env
-    
+
     def reset(self, env_ids: Any = None) -> dict:
         """Reset the term for specified environments.
         
@@ -38,7 +38,7 @@ class ManagerTermBase(ABC):
             Dictionary of reset information (optional)
         """
         return {}
-    
+
     def __str__(self) -> str:
         """String representation."""
         return f"{self.__class__.__name__}"
@@ -50,7 +50,7 @@ class ManagerBase(ABC):
     Managers orchestrate groups of terms (action terms, observation terms, etc.)
     and provide a unified interface for the environment.
     """
-    
+
     def __init__(self, cfg: Any, env: ManagerBasedEnv):
         """Initialize the manager.
         
@@ -60,10 +60,10 @@ class ManagerBase(ABC):
         """
         self.cfg = cfg
         self._env = env
-        
+
         # Active terms (filled by subclasses)
         self.active_terms: Dict[str, Any] = {}
-    
+
     @abstractmethod
     def reset(self, env_ids: Any = None) -> dict:
         """Reset the manager for specified environments.
@@ -75,14 +75,13 @@ class ManagerBase(ABC):
             Dictionary of reset information
         """
         pass
-    
+
     def __str__(self) -> str:
         """String representation."""
         msg = f"<{self.__class__.__name__}>\n"
         msg += f"  Active terms: {list(self.active_terms.keys())}"
         return msg
-    
+
     def __repr__(self) -> str:
         """Representation."""
         return str(self)
-

@@ -6,16 +6,16 @@ Welcome to the Cross-Gym documentation! This directory contains comprehensive gu
 
 ## 🎯 Quick Navigation
 
-| Question | Document |
-|----------|----------|
-| What is Cross-Gym? | [../README.md](../README.md) |
-| How do I start? | [../GETTING_STARTED.md](../GETTING_STARTED.md) |
-| How do examples work? | [../examples/README.md](../examples/README.md) |
-| What design decisions were made? | [IMPROVEMENTS.md](IMPROVEMENTS.md) |
-| How do I configure simulators? | [SIMULATOR_CONFIGS.md](SIMULATOR_CONFIGS.md) |
-| How does architecture work? | [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) |
-| What's implemented? | [STATUS.md](STATUS.md) |
-| Is it complete? | [CHECKLIST.md](CHECKLIST.md) |
+| Question                         | Document                                           |
+|----------------------------------|----------------------------------------------------|
+| What is Cross-Gym?               | [../README.md](../README.md)                       |
+| How do I start?                  | [../GETTING_STARTED.md](GETTING_STARTED.md)        |
+| How do examples work?            | [../examples/README.md](../examples/README.md)     |
+| What design decisions were made? | [IMPROVEMENTS.md](IMPROVEMENTS.md)                 |
+| How do I configure simulators?   | [SIMULATOR_CONFIGS.md](SIMULATOR_CONFIGS.md)       |
+| How does architecture work?      | [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) |
+| What's implemented?              | [STATUS.md](STATUS.md)                             |
+| Is it complete?                  | [CHECKLIST.md](CHECKLIST.md)                       |
 
 ---
 
@@ -24,68 +24,68 @@ Welcome to the Cross-Gym documentation! This directory contains comprehensive gu
 ### For New Users (Start Here!)
 
 1. **[../README.md](../README.md)** - Main project overview
-   - What is Cross-Gym?
-   - Quick start guide
-   - Feature highlights
-   - Installation
+    - What is Cross-Gym?
+    - Quick start guide
+    - Feature highlights
+    - Installation
 
-2. **[../GETTING_STARTED.md](../GETTING_STARTED.md)** - Hands-on tutorial
-   - Core concepts explained
-   - Step-by-step first task
-   - Configuration examples
-   - Troubleshooting
+2. **[../GETTING_STARTED.md](GETTING_STARTED.md)** - Hands-on tutorial
+    - Core concepts explained
+    - Step-by-step first task
+    - Configuration examples
+    - Troubleshooting
 
 3. **[../examples/README.md](../examples/README.md)** - Example tasks
-   - Simple task example
-   - How to create your own task
-   - Switching simulators
+    - Simple task example
+    - How to create your own task
+    - Switching simulators
 
 ---
 
 ### For Framework Developers
 
 4. **[IMPROVEMENTS.md](IMPROVEMENTS.md)** - Design decisions & improvements
-   - configclass implementation
-   - Simulator-specific configs
-   - Quaternion convention
-   - Python 3.8+ compatibility
-   - All design improvements explained
+    - configclass implementation
+    - Simulator-specific configs
+    - Quaternion convention
+    - Python 3.8+ compatibility
+    - All design improvements explained
 
 5. **[SIMULATOR_CONFIGS.md](SIMULATOR_CONFIGS.md)** - Simulator configuration guide
-   - Why simulator-specific configs?
-   - IsaacGymCfg usage
-   - GenesisCfg usage
-   - How to switch simulators
-   - Benefits of the pattern
+    - Why simulator-specific configs?
+    - IsaacGymCfg usage
+    - GenesisCfg usage
+    - How to switch simulators
+    - Benefits of the pattern
 
 6. **[NEW_SIM_PATTERN.md](NEW_SIM_PATTERN.md)** - Detailed pattern explanation
-   - Problems with super-sets
-   - The elegant solution
-   - How it works internally
-   - Comparison table
+    - Problems with super-sets
+    - The elegant solution
+    - How it works internally
+    - Comparison table
 
 7. **[ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md)** - Visual architecture
-   - Overall architecture diagram
-   - Data flow diagrams
-   - Simulator integration
-   - Manager composition
-   - Module dependencies
+    - Overall architecture diagram
+    - Data flow diagrams
+    - Simulator integration
+    - Manager composition
+    - Module dependencies
 
 ---
 
 ### Reference Documentation
 
 8. **[FRAMEWORK_COMPLETE.md](FRAMEWORK_COMPLETE.md)** - Implementation summary
-   - What was built
-   - Statistics
-   - How to use
-   - Key achievements
+    - What was built
+    - Statistics
+    - How to use
+    - Key achievements
 
 9. **[STATUS.md](STATUS.md)** - Current status
-   - Implementation status
-   - Statistics
-   - Capabilities
-   - Next steps
+    - Implementation status
+    - Statistics
+    - Capabilities
+    - Next steps
 
 10. **[CHECKLIST.md](CHECKLIST.md)** - Verification checklist
     - All implemented features
@@ -112,7 +112,7 @@ Welcome to the Cross-Gym documentation! This directory contains comprehensive gu
 → Start with [../README.md](../README.md)
 
 **...create my first task**  
-→ Follow [../GETTING_STARTED.md](../GETTING_STARTED.md)
+→ Follow [../GETTING_STARTED.md](GETTING_STARTED.md)
 
 **...see working code**  
 → Check [../examples/](../examples/)
@@ -137,16 +137,19 @@ Welcome to the Cross-Gym documentation! This directory contains comprehensive gu
 ## 📖 Recommended Reading Order
 
 ### For New Users:
+
 ```
 README.md → GETTING_STARTED.md → examples/README.md → Build your task!
 ```
 
 ### For Developers:
+
 ```
 README.md → IMPROVEMENTS.md → ARCHITECTURE_DIAGRAM.md → Explore code
 ```
 
 ### For Contributors:
+
 ```
 STATUS.md → CHECKLIST.md → Pick a task → Contribute!
 ```
@@ -179,24 +182,25 @@ cross_gym/
 
 ## 🎨 Document Purposes
 
-| Document | Purpose | Audience | Location |
-|----------|---------|----------|----------|
-| **README.md** | Project overview | Everyone | Root |
-| **GETTING_STARTED.md** | Tutorial | Users | Root |
-| **examples/README.md** | Examples | Users | examples/ |
-| **IMPROVEMENTS.md** | Design decisions | Developers | docs/ |
-| **SIMULATOR_CONFIGS.md** | Sim config guide | Developers | docs/ |
-| **NEW_SIM_PATTERN.md** | Pattern details | Developers | docs/ |
-| **ARCHITECTURE_DIAGRAM.md** | Visual arch | Developers | docs/ |
-| **FRAMEWORK_COMPLETE.md** | Summary | Contributors | docs/ |
-| **STATUS.md** | Current status | Contributors | docs/ |
-| **CHECKLIST.md** | Verification | Contributors | docs/ |
+| Document                    | Purpose          | Audience     | Location  |
+|-----------------------------|------------------|--------------|-----------|
+| **README.md**               | Project overview | Everyone     | Root      |
+| **GETTING_STARTED.md**      | Tutorial         | Users        | Root      |
+| **examples/README.md**      | Examples         | Users        | examples/ |
+| **IMPROVEMENTS.md**         | Design decisions | Developers   | docs/     |
+| **SIMULATOR_CONFIGS.md**    | Sim config guide | Developers   | docs/     |
+| **NEW_SIM_PATTERN.md**      | Pattern details  | Developers   | docs/     |
+| **ARCHITECTURE_DIAGRAM.md** | Visual arch      | Developers   | docs/     |
+| **FRAMEWORK_COMPLETE.md**   | Summary          | Contributors | docs/     |
+| **STATUS.md**               | Current status   | Contributors | docs/     |
+| **CHECKLIST.md**            | Verification     | Contributors | docs/     |
 
 ---
 
 ## 💡 No Duplicates!
 
 Each document has a **single, clear purpose**:
+
 - No overlapping content
 - No redundant information
 - Clear separation of concerns

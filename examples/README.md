@@ -7,6 +7,7 @@ This directory contains example tasks and tutorials for Cross-Gym.
 ### 1. Simple Task Example (`simple_task_example.py`)
 
 A minimal example showing how to create a basic RL task using Cross-Gym:
+
 - Defining a scene with a robot
 - Setting up observations, actions, rewards, and terminations
 - Creating the environment

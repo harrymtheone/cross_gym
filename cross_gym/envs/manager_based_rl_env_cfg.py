@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
-from typing import Optional
 
 from cross_gym.managers import RewardManagerCfg, TerminationManagerCfg, CommandManagerCfg
-from cross_gym.utils.configclass import configclass
+from cross_gym.utils import configclass
 from .manager_based_env_cfg import ManagerBasedEnvCfg
 
 
@@ -51,22 +50,21 @@ class ManagerBasedRLEnvCfg(ManagerBasedEnvCfg):
         >>>     terminations = TerminationManagerCfg()
         >>>     terminations.time_out = ManagerTermCfg(func=time_out)
     """
-    
+
     # RL-specific managers
     rewards: RewardManagerCfg = MISSING
     """Reward manager configuration."""
-    
+
     terminations: TerminationManagerCfg = MISSING
     """Termination manager configuration."""
-    
-    commands: Optional[CommandManagerCfg] = None
+
+    commands: CommandManagerCfg | None = None
     """Command manager configuration (optional)."""
-    
+
     # Episode settings
     episode_length_s: float = MISSING
     """Episode length in seconds."""
-    
+
     # Rendering
     rerender_on_reset: bool = True
     """Whether to re-render after reset (for sensor updates)."""
-

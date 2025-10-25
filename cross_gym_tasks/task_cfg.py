@@ -1,0 +1,61 @@
+"""Base configuration for tasks."""
+
+from __future__ import annotations
+
+from dataclasses import MISSING
+
+from cross_gym.envs import ManagerBasedRLEnvCfg
+from cross_gym.utils.configclass import configclass
+
+
+@configclass
+class TaskCfg:
+    """Base configuration for a complete task.
+    
+    A task config contains:
+    1. env - Environment configuration
+    2. algorithm - Algorithm configuration (from cross_gym_rl)
+    3. runner - Runner configuration (from cross_gym_rl)
+    
+    Everything needed for training in one unified config!
+    
+    Example:
+        >>> from cross_gym_rl.algorithms.ppo import PPOCfg
+        >>> from cross_gym_rl.runners import OnPolicyRunnerCfg
+        >>> 
+        >>> @configclass
+        >>> class MyTaskCfg(TaskCfg):
+        >>>     # Environment
+        >>>     env: ManagerBasedRLEnvCfg = MyEnvCfg()
+        >>>     
+        >>>     # Algorithm
+        >>>     algorithm: PPOCfg = PPOCfg(gamma=0.99, ...)
+        >>>     
+        >>>     # Runner
+        >>>     runner: OnPolicyRunnerCfg = OnPolicyRunnerCfg(
+        >>>         max_iterations=1000,
+        >>>         project_name="my_project",
+        >>>         experiment_name="exp001",
+        >>>     )
+        >>> 
+        >>> # Use with TaskRegistry
+        >>> from cross_gym_tasks import TaskRegistry
+        >>> task_registry = TaskRegistry(MyTaskCfg())
+        >>> runner = task_registry.make()
+        >>> runner.learn()
+    """
+
+    # ========== Environment ==========
+    env: ManagerBasedRLEnvCfg = MISSING
+    """Environment configuration."""
+
+    # ========== Algorithm ==========
+    algorithm = MISSING
+    """Algorithm configuration (e.g., PPOCfg from cross_gym_rl)."""
+
+    # ========== Runner ==========
+    runner = MISSING
+    """Runner configuration (e.g., OnPolicyRunnerCfg from cross_gym_rl)."""
+
+
+__all__ = ["TaskCfg"]

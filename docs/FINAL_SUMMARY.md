@@ -9,6 +9,7 @@
 ## 🎉 Complete Robot RL System
 
 Cross-Gym is now a **complete end-to-end robot reinforcement learning system** with:
+
 1. **Cross-platform environment framework**
 2. **Standalone RL training framework (bridge_rl)**
 3. **Task registry for clean workflow**
@@ -53,6 +54,7 @@ cross_gym/
 ### Cross-Gym Framework (59 files, ~5,500 lines)
 
 **Core Components**:
+
 - Simulation layer (IsaacGym backend)
 - Asset system (Articulation)
 - Scene management
@@ -64,6 +66,7 @@ cross_gym/
 ### Bridge RL Framework (17 files, ~1,500 lines)
 
 **Core Components**:
+
 - PPO algorithm (complete implementation)
 - Actor-Critic networks (MLP-based)
 - Rollout storage (GAE, mini-batches)
@@ -78,6 +81,7 @@ cross_gym/
 ## 🎯 Three Ways to Use Cross-Gym
 
 ### 1. **Direct Usage** (Simple)
+
 ```python
 from cross_gym import ManagerBasedRLEnv
 from bridge_rl import OnPolicyRunner, OnPolicyRunnerCfg, PPOCfg
@@ -95,6 +99,7 @@ runner.learn()
 ```
 
 ### 2. **With Task Registry** (Clean) 🆕
+
 ```python
 from cross_gym import task_registry
 from bridge_rl import OnPolicyRunnerCfg
@@ -108,6 +113,7 @@ runner.learn()
 ```
 
 ### 3. **Command Line** (Convenient)
+
 ```bash
 python train.py --task locomotion --experiment_name exp001 --headless
 ```
@@ -117,22 +123,26 @@ python train.py --task locomotion --experiment_name exp001 --headless
 ## 🏗️ Key Architectural Decisions
 
 ### 1. **bridge_rl as Standalone Package** ✅
+
 - Independent of cross_gym
 - Can be used with other Gym environments
 - Clean separation of concerns
 
 ### 2. **Task Registry Pattern** ✅
+
 - Centralized task management
 - Clean CLI interface
 - Supports both manager-based and direct tasks
 - Easy task discovery
 
 ### 3. **Self-Contained Algorithm Folders** ✅
+
 - Each algorithm folder has everything it needs
 - Easy to add new algorithms
 - No confusing "extensions" directory
 
 ### 4. **class_type Pattern Everywhere** ✅
+
 ```python
 IsaacGymCfg.class_type = IsaacGymContext
 ArticulationCfg.class_type = Articulation
@@ -145,6 +155,7 @@ OnPolicyRunnerCfg.class_type = OnPolicyRunner
 ## 🌟 Features
 
 ### Environment Framework
+
 - ✅ Multi-simulator (IsaacGym, Genesis ready, IsaacSim planned)
 - ✅ Modular managers
 - ✅ Rich MDP library (20+ terms)
@@ -153,6 +164,7 @@ OnPolicyRunnerCfg.class_type = OnPolicyRunner
 - ✅ Type-safe (Python 3.8+)
 
 ### RL Framework
+
 - ✅ PPO algorithm (complete)
 - ✅ Actor-Critic networks
 - ✅ GAE, adaptive LR, gradient clipping
@@ -187,13 +199,13 @@ OnPolicyRunnerCfg.class_type = OnPolicyRunner
 
 ## 📊 Complete System Statistics
 
-| Component | Files | Lines | Status |
-|-----------|-------|-------|--------|
-| **Cross-Gym Environment** | 59 | ~5,500 | ✅ Complete |
-| **Bridge RL** | 17 | ~1,500 | ✅ Complete |
-| **Documentation** | 12 | ~3,500 | ✅ Complete |
-| **Examples** | 4 | ~500 | ✅ Complete |
-| **Grand Total** | **92** | **~11,000** | **✅ Production Ready** |
+| Component                 | Files  | Lines       | Status                 |
+|---------------------------|--------|-------------|------------------------|
+| **Cross-Gym Environment** | 59     | ~5,500      | ✅ Complete             |
+| **Bridge RL**             | 17     | ~1,500      | ✅ Complete             |
+| **Documentation**         | 12     | ~3,500      | ✅ Complete             |
+| **Examples**              | 4      | ~500        | ✅ Complete             |
+| **Grand Total**           | **92** | **~11,000** | **✅ Production Ready** |
 
 ---
 
@@ -202,21 +214,25 @@ OnPolicyRunnerCfg.class_type = OnPolicyRunner
 **Cross-Gym + Bridge RL** provides:
 
 ✅ **Complete RL System**
+
 - Environment framework
 - Training framework
 - Task management
 - All integrated!
 
 ✅ **Cross-Platform**
+
 - Switch simulators with one line
 - Same code, multiple backends
 
 ✅ **Modular & Extensible**
+
 - Reusable MDP components
 - Easy to add algorithms
 - Clean patterns throughout
 
 ✅ **Production Quality**
+
 - Type-safe
 - Well-documented
 - Tested patterns
@@ -237,6 +253,7 @@ OnPolicyRunnerCfg.class_type = OnPolicyRunner
 ## 📝 Future Extensions (Optional)
 
 **Bridge RL**:
+
 - PPO_AMP (PPO + Adversarial Motion Priors)
 - DreamWaQ (PPO + World Model)
 - PIE (PPO + Privileged Info)
@@ -244,6 +261,7 @@ OnPolicyRunnerCfg.class_type = OnPolicyRunner
 - Wandb logging
 
 **Cross-Gym**:
+
 - Terrain system
 - Genesis context implementation
 - IsaacSim backend

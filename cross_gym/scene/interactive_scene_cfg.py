@@ -36,23 +36,23 @@ class InteractiveSceneCfg:
         3. Sensors
         4. Non-physics assets (lights, etc.)
     """
-    
+
     num_envs: int = MISSING
     """Number of environment instances."""
-    
+
     env_spacing: float = MISSING
     """Spacing between environment origins (meters).
     
     Used when num_envs > 1 to arrange environments in a grid.
     """
-    
+
     lazy_sensor_update: bool = True
     """Whether to update sensors only when accessed.
     
     If True, sensor data is only computed when the sensor's `data` attribute is accessed.
     If False, all sensors are updated every time `scene.update()` is called.
     """
-    
+
     replicate_physics: bool = True
     """Enable physics replication for faster environment creation.
     
@@ -62,4 +62,3 @@ class InteractiveSceneCfg:
     Note:
         Some asset types (like deformable objects) may require this to be False.
     """
-

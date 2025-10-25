@@ -500,17 +500,17 @@ cross_gym/
 
 ## 🎊 Complete Feature Matrix
 
-| Feature | Status | Files | Description |
-|---------|--------|-------|-------------|
-| **Simulation** | ✅ | 9 | Abstract context + IsaacGym backend |
-| **Assets** | ✅ | 7 | Articulation with state management |
-| **Scene** | ✅ | 3 | Multi-env asset management |
-| **Managers** | ✅ | 9 | All 6 managers implemented |
-| **Environments** | ✅ | 5 | Full Gym interface |
-| **MDP Terms** | ✅ | 4 | 20+ reusable functions |
-| **Utilities** | ✅ | 5 | configclass, math, helpers |
-| **Documentation** | ✅ | 8 | Comprehensive guides |
-| **Examples** | ✅ | 3 | Working demonstrations |
+| Feature           | Status | Files | Description                         |
+|-------------------|--------|-------|-------------------------------------|
+| **Simulation**    | ✅      | 9     | Abstract context + IsaacGym backend |
+| **Assets**        | ✅      | 7     | Articulation with state management  |
+| **Scene**         | ✅      | 3     | Multi-env asset management          |
+| **Managers**      | ✅      | 9     | All 6 managers implemented          |
+| **Environments**  | ✅      | 5     | Full Gym interface                  |
+| **MDP Terms**     | ✅      | 4     | 20+ reusable functions              |
+| **Utilities**     | ✅      | 5     | configclass, math, helpers          |
+| **Documentation** | ✅      | 8     | Comprehensive guides                |
+| **Examples**      | ✅      | 3     | Working demonstrations              |
 
 **Total: 53 files, ~6,400 lines, 100% core complete!**
 
@@ -524,7 +524,7 @@ The framework is **complete** and ready for:
 ✅ Training policies  
 ✅ Switching simulators  
 ✅ Research and development  
-✅ Community contributions  
+✅ Community contributions
 
 **Start building your robot RL tasks with Cross-Gym today!** 🤖🎉
 

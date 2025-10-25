@@ -7,12 +7,15 @@
 ## 🎯 System Components
 
 ### 1. **Cross-Gym** - Environment Framework
+
 Multi-simulator robot RL environments inspired by IsaacLab
 
 ### 2. **Bridge RL** - Training Framework
+
 Standalone RL algorithms (PPO, extensible for AMP, DreamWaQ, PIE)
 
 ### 3. **Task Registry** - Clean Interface
+
 Centralized task management and training orchestration
 
 ---
@@ -55,6 +58,7 @@ cross_gym/                      # Main project
 ## 🚀 Three Ways to Train
 
 ### Method 1: Direct (Simple)
+
 ```python
 from cross_gym import *
 from bridge_rl import OnPolicyRunner, OnPolicyRunnerCfg, PPOCfg
@@ -75,6 +79,7 @@ runner.learn()
 ```
 
 ### Method 2: Task Registry (Clean)
+
 ```python
 from cross_gym import task_registry
 from bridge_rl import OnPolicyRunnerCfg
@@ -90,6 +95,7 @@ runner.learn()
 ```
 
 ### Method 3: Command Line (Convenient)
+
 ```bash
 python train.py \
   --task locomotion \
@@ -132,6 +138,7 @@ Managers  Scene         Actor-Critic  Storage
 ## ✅ What's Complete
 
 ### Cross-Gym Framework
+
 - [x] Simulation abstraction (IsaacGym backend)
 - [x] Asset system (Articulation with state management)
 - [x] Scene management (multi-environment)
@@ -143,6 +150,7 @@ Managers  Scene         Actor-Critic  Storage
 - [x] IsaacLab-style configclass
 
 ### Bridge RL Framework
+
 - [x] Algorithm base class
 - [x] **PPO algorithm** (complete with GAE, clipping, adaptive LR)
 - [x] **Actor-Critic networks** (MLP-based Gaussian policy)
@@ -153,6 +161,7 @@ Managers  Scene         Actor-Critic  Storage
 - [x] Shared utilities (make_mlp, masked operations)
 
 ### Documentation
+
 - [x] README.md - Project overview
 - [x] GETTING_STARTED.md - Tutorial
 - [x] 11 detailed guides in docs/
@@ -162,19 +171,20 @@ Managers  Scene         Actor-Critic  Storage
 
 ## 📊 Final Statistics
 
-| Package | Files | Lines | Status |
-|---------|-------|-------|--------|
-| **Cross-Gym** | 59 | ~5,500 | ✅ Complete |
-| **Bridge RL** | 17 | ~1,500 | ✅ Complete |
-| **Documentation** | 12 | ~3,500 | ✅ Complete |
-| **Examples** | 4 | ~500 | ✅ Complete |
-| **Total** | **92** | **~11,000** | **✅ Production Ready** |
+| Package           | Files  | Lines       | Status                 |
+|-------------------|--------|-------------|------------------------|
+| **Cross-Gym**     | 59     | ~5,500      | ✅ Complete             |
+| **Bridge RL**     | 17     | ~1,500      | ✅ Complete             |
+| **Documentation** | 12     | ~3,500      | ✅ Complete             |
+| **Examples**      | 4      | ~500        | ✅ Complete             |
+| **Total**         | **92** | **~11,000** | **✅ Production Ready** |
 
 ---
 
 ## 🎨 Design Excellence
 
 ### Patterns Used
+
 - ✅ **class_type** - Everywhere (sim, assets, algorithms, runners)
 - ✅ **TYPE_CHECKING** - Clean circular import handling
 - ✅ **MISSING** - Required config fields
@@ -182,6 +192,7 @@ Managers  Scene         Actor-Critic  Storage
 - ✅ **Task registry** - Clean task management
 
 ### Quality
+
 - ✅ **Type-safe** - Full type annotations (Python 3.8+)
 - ✅ **Modular** - Reusable components
 - ✅ **Documented** - Comprehensive guides
@@ -230,7 +241,7 @@ python train.py --task my_task --experiment_name exp001
 ✅ Modular MDP components  
 ✅ Complete training framework  
 ✅ Task management system  
-✅ Professional tooling  
+✅ Professional tooling
 
 **Ready for research, development, and deployment!** 🚀
 

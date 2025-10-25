@@ -2,10 +2,16 @@
 
 This demonstrates how to train a policy using PPO on a Cross-Gym task.
 """
+try:
+    import isaacgym, torch  # noqa
+except ImportError:
+    import torch
 
 from cross_gym import *
-from bridge_rl import OnPolicyRunnerCfg, PPOCfg
 from cross_gym.utils.configclass import configclass
+from cross_gym_rl.algorithms.ppo import PPOCfg
+from cross_gym_rl.runners import OnPolicyRunnerCfg
+
 
 # Import the task (in real use, this would be your custom task)
 # from my_task import MyTaskCfg
@@ -16,7 +22,7 @@ class SimpleSceneCfg(InteractiveSceneCfg):
     """Simple scene configuration."""
     num_envs: int = 16  # Small for testing
     env_spacing: float = 4.0
-    
+
     robot: ArticulationCfg = ArticulationCfg(
         prim_path="{ENV_REGEX_NS}/Robot",
         file=None,  # Would need actual URDF
@@ -30,35 +36,35 @@ class SimpleSceneCfg(InteractiveSceneCfg):
 @configclass
 class SimpleTaskCfg(ManagerBasedRLEnvCfg):
     """Simple task configuration."""
-    
+
     # Simulation
     sim: IsaacGymCfg = IsaacGymCfg(
         dt=0.01,
         device="cuda:0",
         headless=True,
     )
-    
+
     # Scene
     scene: SimpleSceneCfg = SimpleSceneCfg()
-    
+
     # Episode
     decimation: int = 2
     episode_length_s: float = 10.0
-    
+
     # Actions
     actions: ActionManagerCfg = ActionManagerCfg()
     # Would need to add action terms
-    
+
     # Observations
     observations: ObservationManagerCfg = ObservationManagerCfg()
     observations.policy = ObservationGroupCfg()
     observations.policy.base_vel = ManagerTermCfg(func=mdp.observations.base_lin_vel)
     observations.policy.joint_pos = ManagerTermCfg(func=mdp.observations.joint_pos)
-    
+
     # Rewards
     rewards: RewardManagerCfg = RewardManagerCfg()
     rewards.alive = ManagerTermCfg(func=mdp.rewards.alive_reward, weight=1.0)
-    
+
     # Terminations
     terminations: TerminationManagerCfg = TerminationManagerCfg()
     terminations.time_out = ManagerTermCfg(func=mdp.terminations.time_out)
@@ -67,10 +73,10 @@ class SimpleTaskCfg(ManagerBasedRLEnvCfg):
 @configclass
 class TrainCfg(OnPolicyRunnerCfg):
     """Training configuration."""
-    
+
     # Environment
     env_cfg: SimpleTaskCfg = SimpleTaskCfg()
-    
+
     # Algorithm
     algorithm_cfg: PPOCfg = PPOCfg(
         # RL parameters
@@ -92,11 +98,11 @@ class TrainCfg(OnPolicyRunnerCfg):
         max_grad_norm=1.0,
         use_amp=False,
     )
-    
+
     # Training
     max_iterations: int = 1000
     num_steps_per_update: int = 24
-    
+
     # Logging
     log_interval: int = 1
     save_interval: int = 100
@@ -108,28 +114,28 @@ class TrainCfg(OnPolicyRunnerCfg):
 
 def main():
     """Main training function."""
-    
+
     print("=" * 80)
     print("Cross-Gym PPO Training Example")
     print("=" * 80)
-    
+
     # NOTE: This is a configuration example
     # To actually train, you need:
     # 1. A real robot URDF
     # 2. Action term implementation
     # 3. Proper task setup
-    
+
     print("\nTraining Configuration:")
     cfg = TrainCfg()
     print(f"  Algorithm: {cfg.algorithm_cfg.class_type.__name__}")
     print(f"  Environments: {cfg.env_cfg.scene.num_envs}")
     print(f"  Max iterations: {cfg.max_iterations}")
     print(f"  Steps per update: {cfg.num_steps_per_update}")
-    
+
     # Uncomment to actually run (requires proper setup)
     # runner = OnPolicyRunner(cfg)
     # runner.learn()
-    
+
     print("\n" + "=" * 80)
     print("NOTE: This is a configuration example.")
     print("To actually train, implement action terms and provide robot URDF.")
@@ -138,4 +144,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

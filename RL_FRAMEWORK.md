@@ -7,6 +7,7 @@
 ## 🎯 Design Philosophy
 
 **Clean, modular RL framework** following Cross-Gym patterns:
+
 - **class_type** pattern for algorithms and runners
 - **Self-contained** algorithm folders
 - **Extensible** design for adding new algorithms (AMP, DreamWaQ, PIE, etc.)
@@ -46,22 +47,26 @@ cross_gym/rl/
 ## ✅ Implemented (Phase 1: Core PPO)
 
 ### Algorithms
+
 - ✅ `AlgorithmBase` - Abstract base class for all algorithms
 - ✅ `PPO` - Full PPO implementation with clipped surrogate objective
 - ✅ `PPOCfg` - Complete configuration with all hyperparameters
 
 ### Networks
+
 - ✅ `ActorCritic` - MLP-based actor-critic network
 - ✅ Gaussian policy with learnable std
 - ✅ GAE for advantage estimation
 - ✅ Adaptive learning rate
 
 ### Storage
+
 - ✅ `RolloutStorage` - Efficient rollout buffer
 - ✅ GAE computation
 - ✅ Mini-batch generation
 
 ### Runner
+
 - ✅ `OnPolicyRunner` - Complete training loop
 - ✅ Rollout collection
 - ✅ Policy updates
@@ -69,6 +74,7 @@ cross_gym/rl/
 - ✅ Logging
 
 ### Utilities
+
 - ✅ Tensorboard logging
 - ✅ Episode statistics tracking
 - ✅ Masked math operations
@@ -131,6 +137,7 @@ runner.learn()
 ## 📊 PPO Features
 
 ### Core PPO
+
 - ✅ Clipped surrogate objective
 - ✅ Clipped value loss (optional)
 - ✅ GAE for advantage estimation
@@ -138,6 +145,7 @@ runner.learn()
 - ✅ Gradient clipping
 
 ### Advanced Features
+
 - ✅ Adaptive learning rate (based on KL divergence)
 - ✅ Action noise scheduling
 - ✅ Mixed precision training (AMP)
@@ -145,6 +153,7 @@ runner.learn()
 - ✅ Mini-batch training
 
 ### Network
+
 - ✅ MLP actor (outputs action mean)
 - ✅ MLP critic (outputs state value)
 - ✅ Learnable action std
@@ -181,6 +190,7 @@ algorithms/
 ## 🎨 Design Patterns
 
 ### 1. class_type Pattern
+
 ```python
 # Configuration determines which class to use
 algorithm_cfg: PPOCfg = PPOCfg(...)
@@ -191,13 +201,17 @@ algorithm = cfg.algorithm_cfg.class_type(cfg.algorithm_cfg, env)
 ```
 
 ### 2. Self-Contained Algorithms
+
 Each algorithm folder has **everything** it needs:
+
 - `algorithm.py` - Main logic
 - `cfg.py` - Configuration
 - `networks.py` - All networks for this algorithm
 
 ### 3. Shared Building Blocks
+
 `modules/` contains **only** utilities used by multiple algorithms:
+
 - `make_mlp()` - MLP factory
 - `get_activation()` - Activation functions
 - (Future: recurrent wrappers, etc.)
@@ -236,6 +250,7 @@ Each algorithm folder has **everything** it needs:
 ## 🔧 Hyperparameters
 
 ### PPO Defaults
+
 ```python
 gamma: float = 0.99              # Discount factor
 lam: float = 0.95                # GAE lambda
@@ -246,6 +261,7 @@ learning_rate: float = 1e-3      # Learning rate
 ```
 
 ### Network Defaults
+
 ```python
 actor_hidden_dims: [256, 256, 128]
 critic_hidden_dims: [256, 256, 128]
@@ -258,11 +274,13 @@ init_noise_std: 1.0
 ## 📊 Statistics
 
 **Implementation**:
+
 - **Files**: 15 Python modules
 - **Lines**: ~1,500 lines of code
 - **Coverage**: Complete PPO with logging and checkpointing
 
 **Components**:
+
 - 1 base algorithm class
 - 1 complete algorithm (PPO)
 - 1 network architecture
@@ -275,12 +293,14 @@ init_noise_std: 1.0
 ## ✨ Ready to Use!
 
 The RL framework is **production-ready** for:
+
 - ✅ Training PPO policies
 - ✅ Logging to Tensorboard
 - ✅ Checkpointing and resuming
 - ✅ Episode statistics tracking
 
 **Next Steps**:
+
 - Add AMP extension
 - Add DreamWaQ
 - Add PIE

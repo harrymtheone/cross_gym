@@ -9,7 +9,7 @@ try:
         GenesisRigidOptionsCfg,
         GenesisViewerOptionsCfg,
     )
-    
+
     __all__ = [
         # "GenesisContext",  # TODO
         "GenesisCfg",
@@ -19,4 +19,3 @@ try:
     ]
 except ImportError:
     __all__ = []
-

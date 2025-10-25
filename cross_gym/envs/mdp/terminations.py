@@ -35,9 +35,9 @@ def time_out(env: ManagerBasedEnv) -> torch.Tensor:
 # ============================================================================
 
 def base_height_termination(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    min_height: float = 0.3,
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        min_height: float = 0.3,
 ) -> torch.Tensor:
     """Terminate if base falls below minimum height.
     
@@ -55,10 +55,10 @@ def base_height_termination(
 
 
 def base_height_range_termination(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    min_height: float = 0.2,
-    max_height: float = 2.0,
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        min_height: float = 0.2,
+        max_height: float = 2.0,
 ) -> torch.Tensor:
     """Terminate if base goes outside height range.
     
@@ -81,9 +81,9 @@ def base_height_range_termination(
 # ============================================================================
 
 def base_tilt_termination(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    max_tilt_angle: float = 1.57,  # ~90 degrees in radians
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        max_tilt_angle: float = 1.57,  # ~90 degrees in radians
 ) -> torch.Tensor:
     """Terminate if base tilts beyond threshold.
     
@@ -97,12 +97,12 @@ def base_tilt_termination(
     """
     asset = env.scene[asset_name]
     quat = asset.data.root_quat_w  # (w, x, y, z)
-    
+
     # Get z-component of rotated up vector
     from cross_gym.utils.math import quat_rotate
     up_vec = torch.tensor([0.0, 0.0, 1.0], device=env.device).repeat(env.num_envs, 1)
     rotated_up = quat_rotate(quat, up_vec)
-    
+
     # If z-component < cos(max_tilt_angle), we've tilted too much
     return rotated_up[:, 2] < torch.cos(torch.tensor(max_tilt_angle, device=env.device))
 
@@ -112,9 +112,9 @@ def base_tilt_termination(
 # ============================================================================
 
 def base_contact_termination(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    threshold: float = 1.0,
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        threshold: float = 1.0,
 ) -> torch.Tensor:
     """Terminate if base link has contact with ground.
     
@@ -128,18 +128,18 @@ def base_contact_termination(
     """
     asset = env.scene[asset_name]
     contact_forces = asset.data.net_contact_forces
-    
+
     # Base is usually the first body (index 0)
     base_contact_force = torch.norm(contact_forces[:, 0, :], dim=-1)
-    
+
     return base_contact_force > threshold
 
 
 def illegal_contact_termination(
-    env: ManagerBasedEnv,
-    asset_name: str = "robot",
-    body_names: list = ["base"],
-    threshold: float = 1.0,
+        env: ManagerBasedEnv,
+        asset_name: str = "robot",
+        body_names: list = ["base"],
+        threshold: float = 1.0,
 ) -> torch.Tensor:
     """Terminate if specified bodies have contact.
     
@@ -157,16 +157,16 @@ def illegal_contact_termination(
     """
     asset = env.scene[asset_name]
     contact_forces = asset.data.net_contact_forces
-    
+
     # Get indices of illegal bodies
     body_ids = [i for i, name in enumerate(asset.body_names) if name in body_names]
-    
+
     # Check if any illegal body has contact
     terminated = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
     for body_id in body_ids:
         contact_force = torch.norm(contact_forces[:, body_id, :], dim=-1)
         terminated |= (contact_force > threshold)
-    
+
     return terminated
 
 
@@ -186,4 +186,3 @@ __all__ = [
     "base_contact_termination",
     "illegal_contact_termination",
 ]
-

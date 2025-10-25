@@ -14,74 +14,80 @@ A complete, modular RL training framework for Cross-Gym with PPO algorithm.
 ## ✅ Implemented Components
 
 ### 1. **Base Classes** (cross_gym/rl/algorithms/)
+
 - `algorithm_base.py` - Abstract base for all algorithms
-  - `act()` - Generate actions
-  - `process_env_step()` - Store transitions
-  - `compute_returns()` - Compute returns & advantages
-  - `update()` - Policy update
-  - `save()`/`load()` - Checkpointing
+    - `act()` - Generate actions
+    - `process_env_step()` - Store transitions
+    - `compute_returns()` - Compute returns & advantages
+    - `update()` - Policy update
+    - `save()`/`load()` - Checkpointing
 
 ### 2. **PPO Algorithm** (cross_gym/rl/algorithms/ppo/)
+
 - `ppo.py` - Complete PPO implementation
-  - Clipped surrogate objective
-  - GAE for advantage estimation
-  - Clipped value loss (optional)
-  - Entropy bonus
-  - Adaptive learning rate
-  - Gradient clipping
-  - Mixed precision training (AMP)
+    - Clipped surrogate objective
+    - GAE for advantage estimation
+    - Clipped value loss (optional)
+    - Entropy bonus
+    - Adaptive learning rate
+    - Gradient clipping
+    - Mixed precision training (AMP)
 
 - `ppo_cfg.py` - Full configuration
-  - RL hyperparameters (gamma, lam)
-  - PPO hyperparameters (clip_param, epochs, mini-batches)
-  - Network architecture (hidden dims, activation)
-  - Learning rate scheduling
-  - Uses `class_type = PPO` pattern
+    - RL hyperparameters (gamma, lam)
+    - PPO hyperparameters (clip_param, epochs, mini-batches)
+    - Network architecture (hidden dims, activation)
+    - Learning rate scheduling
+    - Uses `class_type = PPO` pattern
 
 - `networks.py` - Actor-Critic network
-  - MLP-based actor (Gaussian policy)
-  - MLP-based critic (value function)
-  - Learnable action std
-  - Distribution management
+    - MLP-based actor (Gaussian policy)
+    - MLP-based critic (value function)
+    - Learnable action std
+    - Distribution management
 
 ### 3. **Storage** (cross_gym/rl/storage/)
+
 - `rollout_storage.py` - Rollout buffer
-  - Stores observations, actions, rewards, dones
-  - Stores policy info (log_prob, mean, std)
-  - GAE computation
-  - Mini-batch generation
-  - Efficient tensor storage
+    - Stores observations, actions, rewards, dones
+    - Stores policy info (log_prob, mean, std)
+    - GAE computation
+    - Mini-batch generation
+    - Efficient tensor storage
 
 ### 4. **Runner** (cross_gym/rl/runners/)
+
 - `on_policy_runner.py` - Training orchestration
-  - Main training loop
-  - Rollout collection
-  - Policy updates
-  - Checkpointing (save/resume)
-  - Metric logging
+    - Main training loop
+    - Rollout collection
+    - Policy updates
+    - Checkpointing (save/resume)
+    - Metric logging
 
 - `on_policy_runner_cfg.py` - Runner configuration
-  - Environment config
-  - Algorithm config
-  - Training settings
-  - Logging settings
+    - Environment config
+    - Algorithm config
+    - Training settings
+    - Logging settings
 
 ### 5. **Network Modules** (cross_gym/rl/modules/)
+
 - `mlp.py` - MLP building blocks
-  - `make_mlp()` - MLP factory function
-  - `get_activation()` - Activation function selector
-  - Used by all algorithms
+    - `make_mlp()` - MLP factory function
+    - `get_activation()` - Activation function selector
+    - Used by all algorithms
 
 ### 6. **Utilities** (cross_gym/rl/utils/)
+
 - `logger.py` - Logging system
-  - Tensorboard logging
-  - Episode statistics tracking
-  - Metric aggregation
+    - Tensorboard logging
+    - Episode statistics tracking
+    - Metric aggregation
 
 - `math_utils.py` - Math operations
-  - `masked_mean()`, `masked_sum()`
-  - `masked_MSE()`, `masked_L1()`
-  - For handling variable-length episodes
+    - `masked_mean()`, `masked_sum()`
+    - `masked_MSE()`, `masked_L1()`
+    - For handling variable-length episodes
 
 ---
 
@@ -124,6 +130,7 @@ cross_gym/rl/
 ## 🎯 Design Patterns
 
 ### 1. **class_type Pattern** (Consistent!)
+
 ```python
 # Algorithms
 PPOCfg.class_type = PPO
@@ -135,12 +142,15 @@ OnPolicyRunnerCfg.class_type = OnPolicyRunner
 ```
 
 ### 2. **Self-Contained Algorithms**
+
 Each algorithm folder contains **everything** it needs:
+
 - Algorithm logic
 - Configuration
 - Networks
 
 ### 3. **Composition Over Inheritance**
+
 - Base `AlgorithmBase` defines interface
 - PPO implements the base
 - Future algorithms (PPO_AMP, DreamWaQ) inherit PPO
@@ -194,6 +204,7 @@ runner.learn()
 ## 📋 Future Extensions
 
 ### Phase 2: AMP
+
 ```
 algorithms/
 └── ppo_amp/
@@ -203,6 +214,7 @@ algorithms/
 ```
 
 ### Phase 3: Advanced Algorithms
+
 ```
 algorithms/
 ├── dreamwaq/           # PPO + VAE + World Model
@@ -215,6 +227,7 @@ algorithms/
 ## ✨ Features
 
 ### PPO Algorithm
+
 - ✅ Clipped surrogate objective
 - ✅ GAE (Generalized Advantage Estimation)
 - ✅ Value function clipping
@@ -225,6 +238,7 @@ algorithms/
 - ✅ Mixed precision training
 
 ### Training Infrastructure
+
 - ✅ Rollout collection
 - ✅ Multi-epoch updates
 - ✅ Mini-batch training
@@ -234,6 +248,7 @@ algorithms/
 - ✅ FPS tracking
 
 ### Network Architecture
+
 - ✅ Customizable MLP sizes
 - ✅ Learnable action std
 - ✅ Flexible activation functions
@@ -246,11 +261,13 @@ algorithms/
 Cross-Gym now provides **everything** for robot RL:
 
 ### Environment Framework ✅
+
 - Multi-simulator support
 - Modular managers
 - Rich MDP library
 
 ### RL Framework ✅
+
 - PPO algorithm
 - Training orchestration
 - Logging & checkpointing
@@ -267,6 +284,7 @@ Cross-Gym now provides **everything** for robot RL:
 4. **Run training** (one command!)
 
 Example:
+
 ```bash
 python examples/train_ppo.py
 ```

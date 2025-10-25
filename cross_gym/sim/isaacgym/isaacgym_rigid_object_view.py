@@ -5,7 +5,7 @@ import torch
 
 class IsaacGymRigidObjectView:
     """View for rigid objects in IsaacGym."""
-    
+
     def __init__(self, gym, sim, prim_path: str, num_envs: int, device: torch.device):
         """Initialize rigid object view.
         
@@ -21,7 +21,6 @@ class IsaacGymRigidObjectView:
         self.prim_path = prim_path
         self.num_envs = num_envs
         self.device = device
-        
+
         # Placeholder - will be implemented when needed
         raise NotImplementedError("RigidObjectView not yet implemented for IsaacGym")
-

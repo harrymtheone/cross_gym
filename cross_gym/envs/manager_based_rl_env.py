@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import gymnasium as gym
 import math
+from typing import Any, Dict, Optional, TYPE_CHECKING, Tuple
+
+import gymnasium as gym
 import numpy as np
 import torch
-from typing import Any, Dict, Optional, TYPE_CHECKING, Tuple
 
 from cross_gym.managers import RewardManager, TerminationManager, CommandManager
 from .common import VecEnvStepReturn
 from .manager_based_env import ManagerBasedEnv
 
 if TYPE_CHECKING:
-    from .manager_based_rl_env_cfg import ManagerBasedRLEnvCfg
+    from . import ManagerBasedRLEnvCfg
 
 
 class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
@@ -27,18 +28,18 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     
     The environment is vectorized - it runs multiple environment instances in parallel.
     """
-    
+
     is_vector_env: bool = True
     """Whether this is a vectorized environment."""
-    
+
     metadata: Dict[str, Any] = {
         "render_modes": [None, "human"],
     }
     """Environment metadata."""
-    
+
     cfg: ManagerBasedRLEnvCfg
     """Configuration for the RL environment."""
-    
+
     def __init__(self, cfg: ManagerBasedRLEnvCfg, render_mode: Optional[str] = None, **kwargs):
         """Initialize the RL environment.
         
@@ -49,46 +50,46 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         """
         # Initialize base environment
         super().__init__(cfg)
-        
+
         # Store render mode
         self.render_mode = render_mode
-        
+
         # Set up RL-specific managers
         self._setup_rl_managers()
-        
+
         # Configure Gym spaces
         self._configure_gym_spaces()
-        
+
         # Reset buffers
         self.reset_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reset_terminated = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reset_truncated = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
-        
+
         # Reward buffer
         self.reward_buf = torch.zeros(self.num_envs, device=self.device)
-        
+
         # Observation buffer
         self.obs_buf: Dict[str, torch.Tensor] = {}
-        
+
         print("[INFO] RL Environment setup complete!")
-    
+
     def _setup_rl_managers(self):
         """Set up RL-specific managers."""
         # Reward manager
         self.reward_manager = RewardManager(self.cfg.rewards, self)
         print(f"[INFO] Reward Manager: {len(self.reward_manager.active_terms)} terms")
-        
+
         # Termination manager
         self.termination_manager = TerminationManager(self.cfg.terminations, self)
         print(f"[INFO] Termination Manager: {len(self.termination_manager.active_terms)} terms")
-        
+
         # Command manager (optional)
         if self.cfg.commands is not None:
             self.command_manager = CommandManager(self.cfg.commands, self)
             print(f"[INFO] Command Manager initialized")
         else:
             self.command_manager = None
-    
+
     def _configure_gym_spaces(self):
         """Configure Gym action and observation spaces."""
         # Observation space
@@ -99,13 +100,13 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             self.single_observation_space[group_name] = gym.spaces.Box(
                 low=-np.inf, high=np.inf, shape=(1,)  # Placeholder
             )
-        
+
         # Action space
         total_action_dim = sum(self.action_manager.action_term_dim)
         self.single_action_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(total_action_dim,)
         )
-        
+
         # Batch spaces for vectorized environment
         self.observation_space = gym.vector.utils.batch_space(
             self.single_observation_space, self.num_envs
@@ -113,17 +114,17 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.action_space = gym.vector.utils.batch_space(
             self.single_action_space, self.num_envs
         )
-    
+
     @property
     def max_episode_length_s(self) -> float:
         """Maximum episode length in seconds."""
         return self.cfg.episode_length_s
-    
+
     @property
     def max_episode_length(self) -> int:
         """Maximum episode length in steps."""
         return math.ceil(self.max_episode_length_s / self.step_dt)
-    
+
     def step(self, actions: torch.Tensor) -> VecEnvStepReturn:
         """Execute one environment step and handle resets.
         
@@ -135,31 +136,31 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         """
         # Call parent step (processes actions, steps sim, computes obs)
         self.obs_buf = super().step(actions)
-        
+
         # Compute rewards
         self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
-        
+
         # Check terminations
         self.reset_buf = self.termination_manager.compute()
         self.reset_terminated = self.termination_manager.terminated
         self.reset_truncated = self.termination_manager.time_outs
-        
+
         # Update commands
         if self.command_manager is not None:
             self.command_manager.compute(dt=self.step_dt)
-        
+
         # Reset environments that terminated
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(reset_env_ids) > 0:
             self._reset_idx(reset_env_ids)
-        
+
         # Return Gym-style outputs
         return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_truncated, self.extras
-    
+
     def reset(
-        self,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
+            self,
+            seed: Optional[int] = None,
+            options: Optional[Dict[str, Any]] = None
     ) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any]]:
         """Reset the environment.
         
@@ -173,22 +174,22 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # Set seed if provided
         if seed is not None:
             self._set_seed(seed)
-        
+
         # Reset all environments
         self.obs_buf = super().reset(env_ids=None)
-        
+
         # Reset episode length
         self.episode_length_buf.zero_()
-        
+
         # Reset buffers
         self.reset_buf.zero_()
         self.reset_terminated.zero_()
         self.reset_truncated.zero_()
         self.reward_buf.zero_()
-        
+
         # Return observations and info
         return self.obs_buf, self.extras
-    
+
     def _reset_idx(self, env_ids: torch.Tensor):
         """Reset specific environments (internal).
         
@@ -197,21 +198,21 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         """
         # Call parent reset
         super().reset(env_ids)
-        
+
         # Reset RL-specific managers
         reward_info = self.reward_manager.reset(env_ids)
         self.termination_manager.reset(env_ids)
         if self.command_manager is not None:
             self.command_manager.reset(env_ids)
-        
+
         # Store reward info in extras for logging
         if "log" not in self.extras:
             self.extras["log"] = {}
         self.extras["log"].update(reward_info)
-        
+
         # Compute new observations for reset environments
         self.obs_buf = self.observation_manager.compute()
-    
+
     def render(self) -> np.ndarray | None:
         """Render the environment.
         
@@ -226,8 +227,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             raise NotImplementedError("rgb_array rendering not yet implemented")
         else:
             raise NotImplementedError(f"Render mode '{self.render_mode}' not supported")
-    
+
     def close(self):
         """Clean up resources."""
         super().close()
-

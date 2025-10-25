@@ -23,6 +23,7 @@ Cross-Gym uses a **three-package architecture** for maximum clarity and reusabil
 **Purpose**: Multi-simulator robot RL environments
 
 **Contains**:
+
 - Simulation abstraction (IsaacGym, Genesis, IsaacSim)
 - Asset system (Articulation, sensors, etc.)
 - Scene management
@@ -38,6 +39,7 @@ Cross-Gym uses a **three-package architecture** for maximum clarity and reusabil
 **Purpose**: Standalone RL algorithms and training
 
 **Contains**:
+
 - Algorithms (PPO, future: AMP, DreamWaQ, PIE, SAC)
 - Neural networks (Actor-Critic, etc.)
 - Experience storage (RolloutStorage, ReplayBuffer)
@@ -55,6 +57,7 @@ Cross-Gym uses a **three-package architecture** for maximum clarity and reusabil
 **Purpose**: Specific task implementations
 
 **Contains**:
+
 - `manager_based_rl/` - Manager-based task definitions
 - `direct_rl/` - Direct RL task definitions
 - `task_registry.py` - Task management
@@ -143,26 +146,31 @@ cross_gym/                         # Project root
 ## ✅ Benefits of Three-Package Design
 
 ### 1. **Clear Separation of Concerns**
+
 - **cross_gym**: Environment logic (simulation, assets, managers)
 - **bridge_rl**: Training logic (algorithms, networks, logging)
 - **tasks**: Application logic (your specific tasks)
 
 ### 2. **Independent Development**
+
 - Framework developers work in `cross_gym/` and `bridge_rl/`
 - Task developers work in `tasks/`
 - No mixing of core library and application code
 
 ### 3. **Easy Sharing**
+
 - Share framework: `cross_gym` + `bridge_rl` (core libraries)
 - Share task: Just the specific task file from `tasks/`
 - Share everything: All three packages
 
 ### 4. **Reusability**
+
 - `cross_gym` can be used without `bridge_rl` (for other RL libraries)
 - `bridge_rl` can be used without `cross_gym` (for other Gym envs)
 - `tasks` are specific to your project
 
 ### 5. **Stability**
+
 - Core packages change infrequently (stable APIs)
 - Tasks package changes frequently (your experiments)
 - Clear what's library vs application
@@ -182,10 +190,11 @@ cross_gym/                         # Project root
 ### As Task Developer
 
 ```python
-# Work in tasks/
+# Work in cross_gym_tasks/
 # Import stable frameworks
 from cross_gym import *
 from bridge_rl import PPOCfg
+
 
 # Define your task
 @configclass
@@ -193,19 +202,21 @@ class MyTaskCfg(ManagerBasedRLEnvCfg):
     # Your task definition
     pass
 
+
 # Register
-from tasks import task_registry
+from cross_gym_tasks import task_registry
+
 task_registry.register("my_task", MyTaskCfg)
 ```
 
 ### As End User
 
 ```bash
-# Just use registered tasks
+# Just use registered cross_gym_tasks
 python train.py --task locomotion --experiment_name exp001
 
 # Or create environment for inference
-from tasks import task_registry
+from cross_gym_tasks import task_registry
 env = task_registry.make_env("locomotion")
 ```
 
@@ -232,15 +243,17 @@ cross_gym/
 ### Import Pattern
 
 ```python
-# In tasks/manager_based_rl/my_task.py
-from cross_gym import *              # Environment framework
-from bridge_rl import PPOCfg         # Training framework
-from tasks import task_registry      # Task registry
+# In cross_gym_tasks/manager_based_rl/my_task.py
+from cross_gym import *  # Environment framework
+from bridge_rl import PPOCfg  # Training framework
+from cross_gym_tasks import task_registry  # Task registry
+
 
 # Define task
 @configclass
 class MyTaskCfg(ManagerBasedRLEnvCfg):
     ...
+
 
 # Register
 task_registry.register("my_task", MyTaskCfg)
@@ -250,14 +263,14 @@ task_registry.register("my_task", MyTaskCfg)
 
 ## 📊 Package Comparison
 
-| Aspect | cross_gym | bridge_rl | tasks |
-|--------|-----------|-----------|-------|
-| **Type** | Core library | Core library | Applications |
-| **Changes** | Rarely | Rarely | Frequently |
-| **Purpose** | Environments | Training | Your tasks |
-| **Depends on** | Nothing | Nothing | Both |
-| **Used by** | tasks, users | tasks, users | End users |
-| **Stability** | Stable API | Stable API | Project-specific |
+| Aspect         | cross_gym    | bridge_rl    | tasks            |
+|----------------|--------------|--------------|------------------|
+| **Type**       | Core library | Core library | Applications     |
+| **Changes**    | Rarely       | Rarely       | Frequently       |
+| **Purpose**    | Environments | Training     | Your tasks       |
+| **Depends on** | Nothing      | Nothing      | Both             |
+| **Used by**    | tasks, users | tasks, users | End users        |
+| **Stability**  | Stable API   | Stable API   | Project-specific |
 
 ---
 
@@ -273,7 +286,7 @@ pip install -e .  # Installs cross_gym and bridge_rl
 ### 2. Create Your Task
 
 ```bash
-# In tasks/manager_based_rl/
+# In cross_gym_tasks/manager_based_rl/
 cp example_locomotion.py my_task.py
 # Edit my_task.py for your robot/objective
 ```
@@ -302,6 +315,7 @@ python examples/train_with_registry.py --task my_task
 3. **tasks** - Your task definitions ✅
 
 **Benefits**:
+
 - ✅ Clear separation
 - ✅ Independent development
 - ✅ Easy sharing

@@ -17,7 +17,7 @@ from cross_gym.scene import InteractiveScene
 from cross_gym.sim import SimulationContext
 
 if TYPE_CHECKING:
-    from .manager_based_env_cfg import ManagerBasedEnvCfg
+    from . import ManagerBasedEnvCfg
 
 
 class ManagerBasedEnv:
@@ -35,7 +35,7 @@ class ManagerBasedEnv:
     - Gym interface (added in ManagerBasedRLEnv)
     
     This separation allows using the same environment for different purposes
-    (e.g., data collection, imitation learning, RL).
+    (e.g., data collection, imitation cross_gym_rl, RL).
     """
 
     def __init__(self, cfg: ManagerBasedEnvCfg):

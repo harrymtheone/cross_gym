@@ -14,7 +14,7 @@ def class_to_dict(obj: Any) -> dict:
     """
     if not hasattr(obj, "__dict__"):
         return obj
-    
+
     result = {}
     for key, value in obj.__dict__.items():
         if key.startswith("_"):
@@ -39,4 +39,3 @@ def update_class_from_dict(obj: Any, config_dict: dict) -> None:
                 update_class_from_dict(getattr(obj, key), value)
             else:
                 setattr(obj, key, value)
-

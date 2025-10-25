@@ -1,6 +1,7 @@
 # Simulator-Specific Configurations
 
-Cross-Gym uses **simulator-specific configuration classes** instead of a monolithic config. This is more elegant and follows the same `class_type` pattern used for assets.
+Cross-Gym uses **simulator-specific configuration classes** instead of a monolithic config. This is more elegant and
+follows the same `class_type` pattern used for assets.
 
 ---
 
@@ -167,6 +168,7 @@ IsaacSimCfg(
 ## Migration from Old Pattern
 
 ### Old (Not Elegant):
+
 ```python
 # One big config with all simulator parameters
 sim: SimulationCfg = SimulationCfg(
@@ -178,6 +180,7 @@ sim: SimulationCfg = SimulationCfg(
 ```
 
 ### New (Elegant):
+
 ```python
 # Simulator-specific config with class_type
 sim: IsaacGymCfg = IsaacGymCfg(
