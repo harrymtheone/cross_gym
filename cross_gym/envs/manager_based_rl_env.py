@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from . import ManagerBasedRLEnvCfg
 
 
-class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
+class ManagerBasedRLEnv(ManagerBasedEnv):
     """Manager-based RL environment with Gymnasium interface.
     
     This class extends ManagerBasedEnv with RL-specific functionality:

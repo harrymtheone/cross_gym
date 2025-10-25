@@ -6,11 +6,13 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import gymnasium as gym
 import torch
 
 from cross_gym_rl.utils.logger import Logger, EpisodeLogger
 
 if TYPE_CHECKING:
+    from cross_gym_rl.algorithms import AlgorithmBase
     from . import OnPolicyRunnerCfg
 
 
@@ -24,7 +26,7 @@ class OnPolicyRunner:
     4. Save checkpoints
     """
 
-    def __init__(self, cfg: OnPolicyRunnerCfg, env, algorithm):
+    def __init__(self, cfg: OnPolicyRunnerCfg, env: gym.Env, algorithm: AlgorithmBase):
         """Initialize runner with pre-created environment and algorithm.
         
         Args:

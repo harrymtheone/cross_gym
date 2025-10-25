@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, TYPE_CHECKING
 
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
     from . import ManagerBasedEnvCfg
 
 
-class ManagerBasedEnv:
+class ManagerBasedEnv(gym.Env):
     """Base environment using the manager-based workflow.
     
     This environment provides the core functionality for simulation-based RL:
