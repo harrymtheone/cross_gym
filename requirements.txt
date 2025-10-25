@@ -1,4 +1,6 @@
 numpy
+open3d
+scipy
 torch
 torchvision
-
+trimesh

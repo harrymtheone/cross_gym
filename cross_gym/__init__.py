@@ -23,3 +23,6 @@ from .managers import *
 
 # MDP terms
 from .envs import mdp
+
+# Terrain
+from . import terrains
