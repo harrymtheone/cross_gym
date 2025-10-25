@@ -59,8 +59,7 @@ class OnPolicyRunner:
     def _setup_logging(self):
         """Set up logging directories and loggers."""
         # Create log directory structure
-        algorithm_name = self.cfg.algorithm_cfg.class_type.__name__
-        log_path = Path(self.cfg.log_dir) / self.cfg.project_name / algorithm_name / self.cfg.experiment_name
+        log_path = Path(self.cfg.log_dir) / self.cfg.project_name / self.algorithm.__name__ / self.cfg.experiment_name
 
         self.log_path = log_path
         self.model_dir = log_path / "models"
@@ -81,7 +80,7 @@ class OnPolicyRunner:
         """Run the main training loop."""
         print("=" * 80)
         print(f"Starting training: {self.cfg.experiment_name}")
-        print(f"  Algorithm: {self.cfg.algorithm_cfg.class_type.__name__}")
+        print(f"  Algorithm: {self.algorithm.__name__}")
         print(f"  Max iterations: {self.cfg.max_iterations}")
         print(f"  Steps per update: {self.cfg.num_steps_per_update}")
         print("=" * 80)

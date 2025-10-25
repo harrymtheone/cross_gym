@@ -61,6 +61,15 @@ class TaskCfg:
     # ========== Runner ==========
     runner: OnPolicyRunnerCfg = MISSING
     """Runner configuration (OnPolicyRunnerCfg from cross_gym_rl)."""
+    
+    def __post_init__(self):
+        """Post-initialization to link configs.
+        
+        Sets num_steps_per_update in algorithm config from runner config.
+        """
+        # Link num_steps_per_update from runner to algorithm
+        if hasattr(self.algorithm, 'num_steps_per_update'):
+            self.algorithm.num_steps_per_update = self.runner.num_steps_per_update
 
 
 __all__ = ["TaskCfg"]

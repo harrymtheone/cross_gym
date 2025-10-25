@@ -1,50 +1,70 @@
 # Cross-Gym Examples
 
-This directory contains example tasks and tutorials for Cross-Gym.
+Examples demonstrating how to use Cross-Gym for robot reinforcement learning.
 
-## Examples
+---
 
-### 1. Simple Task Example (`simple_task_example.py`)
+## 📝 Available Examples
 
-A minimal example showing how to create a basic RL task using Cross-Gym:
+### `train_example.py` - Complete Training Example
 
-- Defining a scene with a robot
-- Setting up observations, actions, rewards, and terminations
-- Creating the environment
+**Demonstrates**: The clean TaskRegistry pattern
 
-**Note**: This is a configuration example and won't run without a proper robot URDF and action implementation.
+**Pattern**:
+```python
+# 1. Define complete task config (env + algorithm + runner)
+task_cfg = MyTaskCfg()
 
+# 2. Create TaskRegistry with config
+task_registry = TaskRegistry(task_cfg)
+
+# 3. Make runner (creates env → algorithm → runner)
+runner = task_registry.make()
+
+# 4. Train!
+runner.learn()
+```
+
+**Run**:
 ```bash
-python examples/simple_task_example.py
+python examples/train_example.py
 ```
 
-## Creating Your Own Task
+---
 
-### Step 1: Define MDP Terms
+## 🎯 TaskCfg Structure
 
-Create functions for observations, rewards, and terminations:
+A complete task config contains three components:
 
 ```python
-def my_observation(env) -> torch.Tensor:
-    """Compute a custom observation."""
-    robot = env.scene["robot"]
-    return robot.data.joint_pos
-
-def my_reward(env) -> torch.Tensor:
-    """Compute a custom reward."""
-    # Reward logic here
-    return torch.ones(env.num_envs, device=env.device)
-
-def my_termination(env) -> torch.Tensor:
-    """Check a custom termination condition."""
-    # Termination logic here
-    return env.episode_length_buf >= env.max_episode_length
+@configclass
+class MyTaskCfg(TaskCfg):
+    # 1. Environment (simulation, scene, managers)
+    env: ManagerBasedRLEnvCfg = MyEnvCfg()
+    
+    # 2. Algorithm (PPO hyperparameters, networks)
+    algorithm: PPOCfg = PPOCfg(
+        gamma=0.99,
+        learning_rate=1e-3,
+        ...
+    )
+    
+    # 3. Runner (training iterations, logging)
+    runner: OnPolicyRunnerCfg = OnPolicyRunnerCfg(
+        max_iterations=1000,
+        project_name="my_project",
+        experiment_name="exp001",
+    )
 ```
 
-### Step 2: Create Scene Configuration
+---
+
+## 🚀 Creating Your Own Task
+
+### Step 1: Define Environment Configuration
 
 ```python
-from cross_gym import InteractiveSceneCfg, ArticulationCfg
+from cross_gym import *
 from cross_gym.utils.configclass import configclass
 
 @configclass
@@ -54,104 +74,181 @@ class MySceneCfg(InteractiveSceneCfg):
     
     robot: ArticulationCfg = ArticulationCfg(
         prim_path="{ENV_REGEX_NS}/Robot",
-        file="path/to/robot.urdf",
+        file="path/to/your/robot.urdf",
+        init_state=ArticulationCfg.InitStateCfg(
+            pos=(0.0, 0.0, 0.6),
+            rot=(1.0, 0.0, 0.0, 0.0),  # (w, x, y, z)
+        ),
     )
-```
-
-### Step 3: Create Task Configuration
-
-```python
-from cross_gym import (
-    ManagerBasedRLEnvCfg,
-    IsaacGymCfg,
-    PhysxCfg,
-    ActionManagerCfg,
-    ObservationManagerCfg,
-    ObservationGroupCfg,
-    RewardManagerCfg,
-    TerminationManagerCfg,
-    ManagerTermCfg,
-)
 
 @configclass
-class MyTaskCfg(ManagerBasedRLEnvCfg):
-    # Simulation - use simulator-specific config!
-    sim: IsaacGymCfg = IsaacGymCfg(
-        dt=0.01,
-        device="cuda:0",
-        physx=PhysxCfg(...),
-    )
-    
-    # Scene
+class MyEnvCfg(ManagerBasedRLEnvCfg):
+    sim: IsaacGymCfg = IsaacGymCfg(dt=0.01, device="cuda:0")
     scene: MySceneCfg = MySceneCfg()
-    
-    # Episode settings
     decimation: int = 2
     episode_length_s: float = 10.0
     
-    # Observations
-    observations: ObservationManagerCfg = ObservationManagerCfg()
-    observations.policy = ObservationGroupCfg()
-    observations.policy.my_obs = ManagerTermCfg(func=my_observation)
-    
-    # Rewards
-    rewards: RewardManagerCfg = RewardManagerCfg()
-    rewards.my_reward = ManagerTermCfg(func=my_reward, weight=1.0)
-    
-    # Terminations
-    terminations: TerminationManagerCfg = TerminationManagerCfg()
-    terminations.my_term = ManagerTermCfg(func=my_termination)
+    # Define observations, rewards, terminations using MDP library
+    observations: ObservationManagerCfg = ...
+    rewards: RewardManagerCfg = ...
+    terminations: TerminationManagerCfg = ...
 ```
 
-### Step 4: Create and Run Environment
+### Step 2: Define Complete Task
 
 ```python
-from cross_gym import ManagerBasedRLEnv
+from cross_gym_tasks import TaskCfg
+from cross_gym_rl.algorithms.ppo import PPOCfg
+from cross_gym_rl.runners import OnPolicyRunnerCfg
 
-# Create environment
-env = ManagerBasedRLEnv(cfg=MyTaskCfg())
-
-# Reset
-obs, info = env.reset()
-
-# Run episode
-for step in range(100):
-    # Get actions from policy (or random)
-    actions = torch.randn(env.num_envs, env.single_action_space.shape[0], device=env.device)
-    
-    # Step environment
-    obs, reward, terminated, truncated, info = env.step(actions)
-
-# Clean up
-env.close()
+@configclass
+class MyTaskCfg(TaskCfg):
+    env: MyEnvCfg = MyEnvCfg()
+    algorithm: PPOCfg = PPOCfg(gamma=0.99, ...)
+    runner: OnPolicyRunnerCfg = OnPolicyRunnerCfg(max_iterations=1000, ...)
 ```
 
-## Switching Simulators
+### Step 3: Train
 
-To switch simulators, just change the config class used:
+```python
+from cross_gym_tasks import TaskRegistry
+
+task_registry = TaskRegistry(MyTaskCfg())
+runner = task_registry.make()
+runner.learn()
+```
+
+---
+
+## 🔧 Using the MDP Library
+
+Cross-Gym provides 20+ ready-to-use MDP terms:
+
+### Observations
+```python
+from cross_gym import mdp
+
+observations.policy.base_vel = ManagerTermCfg(func=mdp.observations.base_lin_vel)
+observations.policy.joint_pos = ManagerTermCfg(func=mdp.observations.joint_pos)
+observations.policy.joint_vel = ManagerTermCfg(func=mdp.observations.joint_vel)
+```
+
+### Rewards
+```python
+rewards.alive = ManagerTermCfg(func=mdp.rewards.alive_reward, weight=1.0)
+rewards.tracking = ManagerTermCfg(
+    func=mdp.rewards.lin_vel_tracking_reward,
+    weight=2.0,
+    params={"target_x": 1.0}
+)
+rewards.energy = ManagerTermCfg(func=mdp.rewards.energy_penalty, weight=-0.01)
+```
+
+### Terminations
+```python
+terminations.time_out = ManagerTermCfg(func=mdp.terminations.time_out)
+terminations.base_height = ManagerTermCfg(
+    func=mdp.terminations.base_height_termination,
+    params={"min_height": 0.3}
+)
+```
+
+---
+
+## 📚 Available MDP Terms
+
+### Observations (10 functions)
+- `base_pos`, `base_quat`, `base_lin_vel`, `base_ang_vel`
+- `joint_pos`, `joint_vel`, `joint_pos_normalized`
+- `body_pos`, `episode_progress`
+
+### Rewards (8 functions)
+- `alive_reward`, `lin_vel_tracking_reward`, `ang_vel_tracking_reward`
+- `energy_penalty`, `torque_penalty`
+- `upright_reward`, `height_reward`, `joint_acc_penalty`
+
+### Terminations (6 functions)
+- `time_out`, `base_height_termination`, `base_height_range_termination`
+- `base_tilt_termination`, `base_contact_termination`, `illegal_contact_termination`
+
+### Actions (2 classes)
+- `JointPositionAction` - Position control
+- `JointEffortAction` - Torque control
+
+---
+
+## 🔄 Switching Simulators
+
+Just change the sim config:
 
 ```python
 # Use IsaacGym
-from cross_gym import IsaacGymCfg
+sim: IsaacGymCfg = IsaacGymCfg(dt=0.01, device="cuda:0")
 
-@configclass
-class MyTaskCfg(ManagerBasedRLEnvCfg):
-    sim: IsaacGymCfg = IsaacGymCfg(dt=0.01, device="cuda:0")
-
-# Use Genesis
-from cross_gym import GenesisCfg
-
-@configclass
-class MyTaskCfg(ManagerBasedRLEnvCfg):
-    sim: GenesisCfg = GenesisCfg(dt=0.01, device="cuda:0")
+# Use Genesis (when implemented)
+sim: GenesisCfg = GenesisCfg(dt=0.01, device="cuda:0")
 ```
 
 Everything else stays the same!
 
-## Next Steps
+---
 
-- Check out the full documentation in `/docs`
-- Read the design document in `/DESIGN.md`
-- Explore the architecture in `/ARCHITECTURE.md`
-- Implement your own MDP terms for custom tasks
+## 📖 Next Steps
 
+1. **Read the documentation**: See [../docs/README.md](../docs/README.md)
+2. **Explore MDP library**: Check `cross_gym/envs/mdp/`
+3. **Create your task**: Copy `train_example.py` and modify
+4. **Implement actions**: Add action terms (currently TODO)
+5. **Provide robot URDF**: Update robot.file in scene config
+
+---
+
+## 💡 Tips
+
+### Debug Mode
+```python
+# Use fewer environments for debugging
+scene.num_envs = 16
+
+# Non-headless for visualization
+sim.headless = False
+```
+
+### Hyperparameter Tuning
+```python
+# Adjust PPO hyperparameters
+algorithm: PPOCfg = PPOCfg(
+    gamma=0.99,              # Discount factor
+    lam=0.95,                # GAE lambda
+    clip_param=0.2,          # PPO clip
+    learning_rate=1e-3,      # Learning rate
+    num_learning_epochs=5,   # Epochs per update
+)
+```
+
+### Custom Networks
+```python
+# Adjust network architecture
+actor_hidden_dims=[512, 256, 128]  # Larger network
+critic_hidden_dims=[512, 256, 128]
+```
+
+---
+
+## ❓ Troubleshooting
+
+**ImportError: No module named 'isaacgym'**
+- Install IsaacGym from https://developer.nvidia.com/isaac-gym
+- `cd isaacgym/python && pip install -e .`
+
+**Missing robot URDF**
+- Provide path in `robot.file` field
+- Make sure URDF is valid
+
+**Action terms not implemented**
+- This is a TODO - implement action terms in your task
+- Or use the MDP library action classes
+
+---
+
+**Ready to train robot RL policies with Cross-Gym!** 🚀
