@@ -1,5 +1,6 @@
 """Environment classes for Cross-Gym."""
-from .common import VecEnvStepReturn
+
+from .vec_env import VecEnv, VecEnvObs, VecEnvStepReturn
 
 from .manager_based_env import ManagerBasedEnv
 from .manager_based_env_cfg import ManagerBasedEnvCfg

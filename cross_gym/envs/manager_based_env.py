@@ -5,7 +5,6 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, TYPE_CHECKING
 
-import gymnasium as gym
 import numpy as np
 import torch
 
@@ -16,12 +15,13 @@ from cross_gym.managers import (
 )
 from cross_gym.scene import InteractiveScene
 from cross_gym.sim import SimulationContext
+from . import VecEnv
 
 if TYPE_CHECKING:
     from . import ManagerBasedEnvCfg
 
 
-class ManagerBasedEnv(gym.Env):
+class ManagerBasedEnv(VecEnv):
     """Base environment using the manager-based workflow.
     
     This environment provides the core functionality for simulation-based RL:
@@ -33,10 +33,9 @@ class ManagerBasedEnv(gym.Env):
     It does NOT include:
     - Reward computation (added in ManagerBasedRLEnv)
     - Termination checking (added in ManagerBasedRLEnv)
-    - Gym interface (added in ManagerBasedRLEnv)
     
     This separation allows using the same environment for different purposes
-    (e.g., data collection, imitation cross_gym_rl, RL).
+    (e.g., data collection, imitation learning, RL).
     """
 
     def __init__(self, cfg: ManagerBasedEnvCfg):
@@ -69,9 +68,11 @@ class ManagerBasedEnv(gym.Env):
         else:
             self.sim = SimulationContext.instance()
 
-        # Store common properties
-        self.device = self.sim.device
-        self.num_envs = self.cfg.scene.num_envs
+        # Initialize VecEnv base class
+        super().__init__(
+            num_envs=self.cfg.scene.num_envs,
+            device=self.sim.device,
+        )
 
         # Create scene
         print("[INFO] Creating scene...")

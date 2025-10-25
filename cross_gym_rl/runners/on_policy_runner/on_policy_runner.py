@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-import gymnasium as gym
 import torch
 
 from cross_gym_rl.utils.logger import Logger, EpisodeLogger
 
 if TYPE_CHECKING:
+    from cross_gym.envs import VecEnv
     from cross_gym_rl.algorithms import AlgorithmBase
     from . import OnPolicyRunnerCfg
 
@@ -26,7 +26,7 @@ class OnPolicyRunner:
     4. Save checkpoints
     """
 
-    def __init__(self, cfg: OnPolicyRunnerCfg, env: gym.Env, algorithm: AlgorithmBase):
+    def __init__(self, cfg: OnPolicyRunnerCfg, env: VecEnv, algorithm: AlgorithmBase):
         """Initialize runner with pre-created environment and algorithm.
         
         Args:
@@ -154,7 +154,7 @@ class OnPolicyRunner:
             self.logger.close()
         self.env.close()
 
-    def _log_metrics(self, iteration: int, update_metrics: Dict[str, float], infos: Dict[str, Any]):
+    def _log_metrics(self, iteration: int, update_metrics: dict[str, float], infos: dict[str, Any]):
         """Log training metrics.
         
         Args:

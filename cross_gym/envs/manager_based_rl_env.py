@@ -5,13 +5,12 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, Optional, TYPE_CHECKING, Tuple
 
-import gymnasium as gym
 import numpy as np
 import torch
 
 from cross_gym.managers import RewardManager, TerminationManager, CommandManager
-from .common import VecEnvStepReturn
 from .manager_based_env import ManagerBasedEnv
+from .vec_env import VecEnvStepReturn
 
 if TYPE_CHECKING:
     from . import ManagerBasedRLEnvCfg
@@ -57,9 +56,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv):
         # Set up RL-specific managers
         self._setup_rl_managers()
 
-        # Configure Gym spaces
-        self._configure_gym_spaces()
-
         # Reset buffers
         self.reset_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reset_terminated = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
@@ -89,31 +85,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv):
             print(f"[INFO] Command Manager initialized")
         else:
             self.command_manager = None
-
-    def _configure_gym_spaces(self):
-        """Configure Gym action and observation spaces."""
-        # Observation space
-        self.single_observation_space = gym.spaces.Dict()
-        for group_name in self.observation_manager.groups.keys():
-            # For now, use unbounded box spaces
-            # TODO: Compute actual dimensions from observation manager
-            self.single_observation_space[group_name] = gym.spaces.Box(
-                low=-np.inf, high=np.inf, shape=(1,)  # Placeholder
-            )
-
-        # Action space
-        total_action_dim = sum(self.action_manager.action_term_dim)
-        self.single_action_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(total_action_dim,)
-        )
-
-        # Batch spaces for vectorized environment
-        self.observation_space = gym.vector.utils.batch_space(
-            self.single_observation_space, self.num_envs
-        )
-        self.action_space = gym.vector.utils.batch_space(
-            self.single_action_space, self.num_envs
-        )
 
     @property
     def max_episode_length_s(self) -> float:
