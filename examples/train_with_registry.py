@@ -8,17 +8,9 @@ try:
 except ImportError:
     import torch
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 from cross_gym.utils.configclass import configclass
-from bridge_rl import OnPolicyRunnerCfg, PPOCfg
+from learning import OnPolicyRunnerCfg, PPOCfg
 from tasks import task_registry
-
-
-# Import task (defined in tasks package)
 
 
 # ============================================================================

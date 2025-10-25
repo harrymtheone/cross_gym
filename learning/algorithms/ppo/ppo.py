@@ -8,9 +8,8 @@ import torch
 import torch.optim as optim
 from torch.distributions import Normal, kl_divergence
 
-from bridge_rl.algorithms.algorithm_base import AlgorithmBase
-from bridge_rl.storage import RolloutStorage
-from bridge_rl.utils import masked_mean, masked_MSE
+from learning.algorithms.algorithm_base import AlgorithmBase
+from learning.storage import RolloutStorage
 from .networks import ActorCritic
 
 if TYPE_CHECKING:
@@ -28,9 +27,9 @@ class PPO(AlgorithmBase):
     
     Implements the clipped surrogate objective PPO algorithm with GAE.
     """
-    
+
     cfg: PPOCfg
-    
+
     def __init__(self, cfg: PPOCfg, env: ManagerBasedRLEnv):
         """Initialize PPO algorithm.
         
@@ -39,11 +38,11 @@ class PPO(AlgorithmBase):
             env: Environment instance
         """
         super().__init__(cfg, env)
-        
+
         # Get observation and action shapes
         obs_shape = env.observation_manager.group_obs_dim
         action_dim = sum(env.action_manager.action_term_dim)
-        
+
         # Create actor-critic network
         self.actor_critic = ActorCritic(
             obs_shape=obs_shape,
@@ -53,13 +52,13 @@ class PPO(AlgorithmBase):
             activation=cfg.activation,
             init_noise_std=cfg.init_noise_std,
         ).to(self.device)
-        
+
         # Create optimizer
         self.optimizer = optim.Adam(
             self.actor_critic.parameters(),
             lr=cfg.learning_rate
         )
-        
+
         # Create rollout storage
         self.storage = RolloutStorage(
             num_steps=cfg.num_steps_per_update,
@@ -68,13 +67,13 @@ class PPO(AlgorithmBase):
             action_dim=action_dim,
             device=self.device,
         )
-        
+
         # Mixed precision training
         self.scaler = GradScaler(enabled=cfg.use_amp)
-        
+
         # Learning rate (for adaptive schedule)
         self.learning_rate = cfg.learning_rate
-    
+
     def act(self, observations: Dict[str, torch.Tensor], **kwargs) -> torch.Tensor:
         """Generate actions from observations.
         
@@ -86,15 +85,15 @@ class PPO(AlgorithmBase):
             Actions (num_envs, action_dim)
         """
         return self.actor_critic.act(observations, eval_mode=False)
-    
+
     def process_env_step(
-        self,
-        rewards: torch.Tensor,
-        terminated: torch.Tensor,
-        truncated: torch.Tensor,
-        infos: Dict[str, Any],
-        observations: Dict[str, torch.Tensor],
-        **kwargs
+            self,
+            rewards: torch.Tensor,
+            terminated: torch.Tensor,
+            truncated: torch.Tensor,
+            infos: Dict[str, Any],
+            observations: Dict[str, torch.Tensor],
+            **kwargs
     ):
         """Process environment step and store transition.
         
@@ -111,10 +110,10 @@ class PPO(AlgorithmBase):
         actions_log_prob = self.actor_critic.get_actions_log_prob(self.storage.actions[self.storage.step - 1])
         action_mean = self.actor_critic.action_mean
         action_std = self.actor_critic.action_std
-        
+
         # Get the actions that were just taken (stored in previous step)
         actions = self.storage.actions[self.storage.step - 1]
-        
+
         # Store transition
         dones = terminated | truncated
         self.storage.add_transitions(
@@ -127,7 +126,7 @@ class PPO(AlgorithmBase):
             action_mean=action_mean,
             action_std=action_std,
         )
-    
+
     def compute_returns(self, last_observations: Dict[str, torch.Tensor]):
         """Compute returns and advantages.
         
@@ -136,9 +135,9 @@ class PPO(AlgorithmBase):
         """
         with torch.no_grad():
             last_values = self.actor_critic.evaluate(last_observations)
-        
+
         self.storage.compute_returns(last_values, self.cfg.gamma, self.cfg.lam)
-    
+
     def update(self, **kwargs) -> Dict[str, float]:
         """Update policy using PPO.
         
@@ -150,18 +149,18 @@ class PPO(AlgorithmBase):
         mean_surrogate_loss = 0
         mean_entropy_loss = 0
         mean_kl = 0
-        
+
         # Multiple epochs over the same data
         for epoch in range(self.cfg.num_learning_epochs):
             # Generate mini-batches
             for batch in self.storage.mini_batch_generator(self.cfg.num_mini_batches):
                 # Compute PPO loss
                 losses = self._compute_ppo_loss(batch)
-                
+
                 # Backward pass
                 self.optimizer.zero_grad()
                 self.sctoggle.scale(losses['total_loss']).backward()
-                
+
                 # Gradient clipping
                 if self.cfg.max_grad_norm is not None:
                     self.sctoggle.unscale_(self.optimizer)
@@ -169,18 +168,18 @@ class PPO(AlgorithmBase):
                         self.actor_critic.parameters(),
                         self.cfg.max_grad_norm
                     )
-                
+
                 # Optimizer step
                 self.sctoggle.step(self.optimizer)
                 self.scaler.update()
-                
+
                 # Accumulate losses for logging
                 mean_value_loss += losses['value_loss'].item()
                 mean_surrogate_loss += losses['surrogate_loss'].item()
                 mean_entropy_loss += losses['entropy_loss'].item()
                 if 'kl' in losses:
                     mean_kl += losses['kl']
-        
+
         # Average over all mini-batches and epochs
         num_updates = self.cfg.num_learning_epochs * self.cfg.num_mini_batches
         mean_value_loss /= num_updates
@@ -188,23 +187,23 @@ class PPO(AlgorithmBase):
         mean_entropy_loss /= num_updates
         if mean_kl > 0:
             mean_kl /= num_updates
-        
+
         # Adaptive learning rate
         if self.cfg.learning_rate_schedule == 'adaptive' and self.cfg.desired_kl is not None:
             if mean_kl > self.cfg.desired_kl * 2.0:
                 self.learning_rate = max(1e-5, self.learning_rate / 1.5)
             elif mean_kl < self.cfg.desired_kl / 2.0:
                 self.learning_rate = min(1e-2, self.learning_rate * 1.5)
-            
+
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = self.learning_rate
-        
+
         # Clip noise std
         self.actor_critic.clip_std(*self.cfg.noise_std_range)
-        
+
         # Clear storage
         self.storage.clear()
-        
+
         return {
             'Loss/value_loss': mean_value_loss,
             'Loss/surrogate_loss': mean_surrogate_loss,
@@ -213,7 +212,7 @@ class PPO(AlgorithmBase):
             'Train/learning_rate': self.learning_rate,
             'Train/action_std': self.actor_critic.log_std.exp().mean().item(),
         }
-    
+
     def _compute_ppo_loss(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Compute PPO losses for a mini-batch.
         
@@ -232,17 +231,17 @@ class PPO(AlgorithmBase):
         old_actions_log_prob = batch['actions_log_prob']
         old_action_mean = batch['action_mean']
         old_action_std = batch['action_std']
-        
+
         # Forward pass
         action_mean = self.actor_critic.actor(observations['policy'] if 'policy' in observations else observations[list(observations.keys())[0]])
         values = self.actor_critic.evaluate(observations)
-        
+
         # Recompute action distribution
         std = torch.exp(self.actor_critic.log_std)
         self.actor_critic.distribution = Normal(action_mean, std)
         actions_log_prob = self.actor_critic.get_actions_log_prob(actions)
         entropy = self.actor_critic.entropy
-        
+
         # Compute KL divergence for adaptive learning rate
         kl = 0
         if self.cfg.learning_rate_schedule == 'adaptive':
@@ -252,7 +251,7 @@ class PPO(AlgorithmBase):
                     Normal(action_mean, std)
                 )
                 kl = kl_dist.sum(dim=-1, keepdim=True).mean().item()
-        
+
         # PPO clipped surrogate loss
         ratio = torch.exp(actions_log_prob - old_actions_log_prob)
         surrogate = advantages * ratio
@@ -261,7 +260,7 @@ class PPO(AlgorithmBase):
             1.0 + self.cfg.clip_param
         )
         surrogate_loss = -torch.min(surrogate, surrogate_clipped).mean()
-        
+
         # Value loss
         if self.cfg.use_clipped_value_loss:
             value_clipped = old_values + (values - old_values).clamp(
@@ -273,17 +272,17 @@ class PPO(AlgorithmBase):
             value_loss = torch.max(value_loss, value_loss_clipped).mean()
         else:
             value_loss = (returns - values).pow(2).mean()
-        
+
         # Entropy loss (bonus)
         entropy_loss = -entropy.mean()
-        
+
         # Total loss
         total_loss = (
-            surrogate_loss
-            + self.cfg.value_loss_coef * value_loss
-            + self.cfg.entropy_coef * entropy_loss
+                surrogate_loss
+                + self.cfg.value_loss_coef * value_loss
+                + self.cfg.entropy_coef * entropy_loss
         )
-        
+
         return {
             'total_loss': total_loss,
             'surrogate_loss': surrogate_loss,
@@ -291,7 +290,7 @@ class PPO(AlgorithmBase):
             'entropy_loss': entropy_loss,
             'kl': kl,
         }
-    
+
     def reset(self, env_ids: torch.Tensor):
         """Reset algorithm state for specified environments.
         
@@ -303,4 +302,3 @@ class PPO(AlgorithmBase):
 
 
 __all__ = ["PPO"]
-
