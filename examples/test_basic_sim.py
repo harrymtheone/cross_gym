@@ -11,8 +11,8 @@ import sys
 # Add cross_gym to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from cross_gym.sim import SimulationContext, SimulationCfg, SimulatorType
-from cross_gym.sim.isaacgym import IsaacGymContext
+from cross_gym.sim import SimulationContext
+from cross_gym.sim.isaacgym import IsaacGymContext, IsaacGymCfg, PhysxCfg
 
 
 def test_basic_sim_context():
@@ -23,22 +23,26 @@ def test_basic_sim_context():
     print("=" * 80)
 
     # Create configuration
-    cfg = SimulationCfg(
-        simulator=SimulatorType.ISAACGYM,
+    cfg = IsaacGymCfg(
         device="cuda:0" if torch.cuda.is_available() else "cpu",
         dt=0.01,
         headless=True,  # No viewer for this test
+        physx=PhysxCfg(
+            solver_type=1,
+            num_position_iterations=4,
+            num_velocity_iterations=1,
+        ),
     )
 
     print(f"\nConfiguration:")
-    print(f"  Simulator: {cfg.simulator}")
+    print(f"  Simulator: {cfg.class_type.__name__}")
     print(f"  Device: {cfg.device}")
     print(f"  Physics dt: {cfg.dt}")
     print(f"  Headless: {cfg.headless}")
 
     # Create simulation context
     print("\nCreating simulation context...")
-    sim = IsaacGymContext(cfg)
+    sim = cfg.class_type(cfg)  # Use class_type pattern!
 
     print(f"✓ Simulation context created successfully!")
     print(f"  Device: {sim.device}")

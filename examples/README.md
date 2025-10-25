@@ -62,8 +62,8 @@ class MySceneCfg(InteractiveSceneCfg):
 ```python
 from cross_gym import (
     ManagerBasedRLEnvCfg,
-    SimulationCfg,
-    SimulatorType,
+    IsaacGymCfg,
+    PhysxCfg,
     ActionManagerCfg,
     ObservationManagerCfg,
     ObservationGroupCfg,
@@ -74,11 +74,11 @@ from cross_gym import (
 
 @configclass
 class MyTaskCfg(ManagerBasedRLEnvCfg):
-    # Simulation
-    sim: SimulationCfg = SimulationCfg(
-        simulator=SimulatorType.ISAACGYM,
+    # Simulation - use simulator-specific config!
+    sim: IsaacGymCfg = IsaacGymCfg(
         dt=0.01,
         device="cuda:0",
+        physx=PhysxCfg(...),
     )
     
     # Scene
@@ -127,17 +127,22 @@ env.close()
 
 ## Switching Simulators
 
-To switch simulators, just change one line in your config:
+To switch simulators, just change the config class used:
 
 ```python
 # Use IsaacGym
-cfg.sim.simulator = SimulatorType.ISAACGYM
+from cross_gym import IsaacGymCfg
+
+@configclass
+class MyTaskCfg(ManagerBasedRLEnvCfg):
+    sim: IsaacGymCfg = IsaacGymCfg(dt=0.01, device="cuda:0")
 
 # Use Genesis
-cfg.sim.simulator = SimulatorType.GENESIS
+from cross_gym import GenesisCfg
 
-# Use IsaacSim
-cfg.sim.simulator = SimulatorType.ISAACSIM
+@configclass
+class MyTaskCfg(ManagerBasedRLEnvCfg):
+    sim: GenesisCfg = GenesisCfg(dt=0.01, device="cuda:0")
 ```
 
 Everything else stays the same!

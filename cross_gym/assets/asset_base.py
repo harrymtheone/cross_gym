@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple
 
 import torch
 
+from cross_gym.sim import SimulationContext
 from cross_gym.utils.configclass import configclass
 
 
@@ -19,17 +19,14 @@ class AssetBaseCfg:
     # Prim path in the scene
     prim_path: str = "/World/envs/env_.*/Asset"
 
-    # Spawning configuration
-    spawn: Optional[Callable] = None  # Spawning function (if creating programmatically)
-
     # Initial state
     @configclass
     class InitStateCfg:
         """Initial state of the asset."""
-        pos: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-        rot: Tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)  # (w, x, y, z) - identity quaternion
-        lin_vel: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-        ang_vel: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+        pos: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        rot: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)  # (w, x, y, z)
+        lin_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        ang_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
     init_state: InitStateCfg = InitStateCfg()
 
@@ -61,7 +58,6 @@ class AssetBase(ABC):
         self.cfg = cfg
 
         # Get simulator context
-        from cross_gym.sim import SimulationContext
         self.sim = SimulationContext.instance()
 
         if self.sim is None:
@@ -86,7 +82,7 @@ class AssetBase(ABC):
         pass
 
     @abstractmethod
-    def reset(self, env_ids: Optional[torch.Tensor] = None):
+    def reset(self, env_ids: torch.Tensor | None = None):
         """Reset the asset state for specified environments.
         
         Args:
@@ -96,7 +92,7 @@ class AssetBase(ABC):
 
     @abstractmethod
     def update(self, dt: float):
-        """Update the asset by reading latest state from simulation.
+        """Update the asset by reading the latest state from simulation.
         
         Args:
             dt: Time step in seconds

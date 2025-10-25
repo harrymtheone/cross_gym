@@ -6,7 +6,7 @@ from dataclasses import MISSING
 from typing import Optional
 
 from cross_gym.scene import InteractiveSceneCfg
-from cross_gym.sim import SimulationCfg
+from cross_gym.sim import SimCfgBase
 from cross_gym.managers import ActionManagerCfg, ObservationManagerCfg, EventManagerCfg
 from cross_gym.utils.configclass import configclass
 
@@ -19,8 +19,8 @@ class ManagerBasedEnvCfg:
     """
     
     # Simulation
-    sim: SimulationCfg = MISSING
-    """Simulation configuration."""
+    sim: SimCfgBase = MISSING
+    """Simulation configuration (use IsaacGymCfg, GenesisCfg, or IsaacSimCfg)."""
     
     # Scene
     scene: InteractiveSceneCfg = MISSING
@@ -52,9 +52,3 @@ class ManagerBasedEnvCfg:
     # Random seed
     seed: Optional[int] = None
     """Random seed for the environment. Default is None."""
-    
-    def validate(self):
-        """Validate the configuration."""
-        if self.decimation < 1:
-            raise ValueError(f"Decimation must be >= 1, got {self.decimation}")
-

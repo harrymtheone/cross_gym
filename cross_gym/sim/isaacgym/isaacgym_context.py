@@ -1,20 +1,25 @@
 """IsaacGym simulation context implementation."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 import torch
 import numpy as np
 
 from isaacgym import gymapi, gymutil, gymtorch
 
 from cross_gym.sim.simulation_context import SimulationContext
-from cross_gym.sim.simulation_cfg import SimulationCfg
-from cross_gym.utils.helpers import class_to_dict
+
+if TYPE_CHECKING:
+    from .isaacgym_cfg import IsaacGymCfg
 
 
 class IsaacGymContext(SimulationContext):
     """IsaacGym-specific implementation of SimulationContext."""
     
-    def __init__(self, cfg: SimulationCfg):
+    cfg: IsaacGymCfg
+    
+    def __init__(self, cfg: IsaacGymCfg):
         """Initialize IsaacGym simulation context.
         
         Args:
@@ -43,18 +48,18 @@ class IsaacGymContext(SimulationContext):
         
         # Set basic parameters
         sim_params.dt = self.cfg.dt
-        sim_params.substeps = 1
-        sim_params.up_axis = gymapi.UP_AXIS_Z
+        sim_params.substeps = self.cfg.substeps
+        sim_params.up_axis = gymapi.UP_AXIS_Z if self.cfg.up_axis == "z" else gymapi.UP_AXIS_Y
         sim_params.gravity = gymapi.Vec3(*self.cfg.gravity)
         
         # GPU pipeline settings
-        sim_params.use_gpu_pipeline = sim_device == 'cuda'
+        sim_params.use_gpu_pipeline = self.cfg.use_gpu_pipeline
         
         # PhysX settings
-        sim_params.physx.use_gpu = sim_device == 'cuda'
+        sim_params.physx.use_gpu = self.cfg.physx.use_gpu
         sim_params.physx.solver_type = self.cfg.physx.solver_type
-        sim_params.physx.num_position_iterations = self.cfg.physx.max_position_iteration_count
-        sim_params.physx.num_velocity_iterations = self.cfg.physx.max_velocity_iteration_count
+        sim_params.physx.num_position_iterations = self.cfg.physx.num_position_iterations
+        sim_params.physx.num_velocity_iterations = self.cfg.physx.num_velocity_iterations
         sim_params.physx.contact_offset = self.cfg.physx.contact_offset
         sim_params.physx.rest_offset = self.cfg.physx.rest_offset
         sim_params.physx.bounce_threshold_velocity = self.cfg.physx.bounce_threshold_velocity

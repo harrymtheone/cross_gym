@@ -17,8 +17,8 @@ import torch
 
 from cross_gym import (
     # Simulation
-    SimulationCfg,
-    SimulatorType,
+    IsaacGymCfg,
+    PhysxCfg,
     # Scene
     InteractiveSceneCfg,
     ArticulationCfg,
@@ -150,12 +150,16 @@ class SimpleSceneCfg(InteractiveSceneCfg):
 class SimpleTaskCfg(ManagerBasedRLEnvCfg):
     """Configuration for the simple task."""
 
-    # Simulation
-    sim: SimulationCfg = SimulationCfg(
-        simulator=SimulatorType.ISAACGYM,
+    # Simulation - Use simulator-specific config!
+    sim: IsaacGymCfg = IsaacGymCfg(
         dt=0.01,  # 100 Hz physics
         device="cuda:0",
         headless=True,
+        physx=PhysxCfg(
+            solver_type=1,
+            num_position_iterations=4,
+            num_velocity_iterations=1,
+        ),
     )
 
     # Scene
@@ -211,7 +215,7 @@ def main():
     # 3. Proper simulator setup
 
     print("\nTask Configuration:")
-    print(f"  Simulator: {cfg.sim.simulator.name}")
+    print(f"  Simulator: {cfg.sim.class_type.__name__}")
     print(f"  Device: {cfg.sim.device}")
     print(f"  Num Envs: {cfg.scene.num_envs}")
     print(f"  Physics dt: {cfg.sim.dt}s")

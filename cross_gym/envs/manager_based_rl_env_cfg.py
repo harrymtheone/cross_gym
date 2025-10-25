@@ -20,13 +20,15 @@ class ManagerBasedRLEnvCfg(ManagerBasedEnvCfg):
     - CommandManager (optional)
     
     Example:
+        >>> from cross_gym import IsaacGymCfg, PhysxCfg
+        >>> 
         >>> @configclass
         >>> class MyTaskCfg(ManagerBasedRLEnvCfg):
-        >>>     # Simulation
-        >>>     sim = SimulationCfg(
-        >>>         simulator=SimulatorType.ISAACGYM,
+        >>>     # Simulation - use simulator-specific config
+        >>>     sim = IsaacGymCfg(
         >>>         dt=0.01,
         >>>         device="cuda:0",
+        >>>         physx=PhysxCfg(...),
         >>>     )
         >>>     
         >>>     # Scene

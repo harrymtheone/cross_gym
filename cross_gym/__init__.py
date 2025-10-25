@@ -9,11 +9,20 @@ __version__ = "0.1.0"
 # Core simulator imports
 from cross_gym.sim import (
     SimulationContext,
-    SimulationCfg,
-    PhysxCfg,
-    RenderCfg,
-    SimulatorType,
+    SimCfgBase,
 )
+
+# Simulator-specific imports (when available)
+try:
+    from cross_gym.sim import IsaacGymCfg, PhysxCfg, IsaacGymContext
+except ImportError:
+    IsaacGymCfg = None
+    PhysxCfg = None
+
+try:
+    from cross_gym.sim import GenesisCfg
+except ImportError:
+    GenesisCfg = None
 
 # Asset imports
 from cross_gym.assets import (
@@ -59,10 +68,7 @@ from cross_gym.managers import (
 __all__ = [
     # Simulation
     "SimulationContext",
-    "SimulationCfg",
-    "PhysxCfg",
-    "RenderCfg",
-    "SimulatorType",
+    "SimCfgBase",
     # Assets
     "AssetBase",
     "AssetBaseCfg",
@@ -93,3 +99,9 @@ __all__ = [
     "EventManagerCfg",
     "ManagerTermCfg",
 ]
+
+# Add simulator-specific exports if available
+if IsaacGymCfg is not None:
+    __all__.extend(["IsaacGymCfg", "PhysxCfg", "IsaacGymContext"])
+if GenesisCfg is not None:
+    __all__.append("GenesisCfg")

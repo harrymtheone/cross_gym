@@ -118,9 +118,14 @@ class IsaacGymArticulationView:
         """
         return self._root_state[:, 10:13]
 
-    def set_root_state(self, root_pos: torch.Tensor, root_quat: torch.Tensor,
-                       root_lin_vel: torch.Tensor, root_ang_vel: torch.Tensor,
-                       env_ids: torch.Tensor | None = None):
+    def set_root_state(
+            self,
+            root_pos: torch.Tensor,
+            root_quat: torch.Tensor,
+            root_lin_vel: torch.Tensor,
+            root_ang_vel: torch.Tensor,
+            env_ids: torch.Tensor | None = None
+    ):
         """Set root link state for specified environments.
         
         Args:
