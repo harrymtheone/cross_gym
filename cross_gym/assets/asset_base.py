@@ -27,7 +27,7 @@ class AssetBaseCfg:
     class InitStateCfg:
         """Initial state of the asset."""
         pos: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-        rot: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0)  # (x, y, z, w)
+        rot: Tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)  # (w, x, y, z) - identity quaternion
         lin_vel: Tuple[float, float, float] = (0.0, 0.0, 0.0)
         ang_vel: Tuple[float, float, float] = (0.0, 0.0, 0.0)
 

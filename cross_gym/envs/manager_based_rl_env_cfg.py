@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
+from typing import Optional
 
 from cross_gym.managers import RewardManagerCfg, TerminationManagerCfg, CommandManagerCfg
 from cross_gym.utils.configclass import configclass

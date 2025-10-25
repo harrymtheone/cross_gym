@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
+from typing import Optional
 
 from cross_gym.scene import InteractiveSceneCfg
 from cross_gym.sim import SimulationCfg

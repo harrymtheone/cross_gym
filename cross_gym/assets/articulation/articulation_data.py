@@ -15,7 +15,7 @@ class ArticulationData:
 
     # Root state (base link)
     root_pos_w: torch.Tensor = None  # (num_envs, 3) - position in world frame
-    root_quat_w: torch.Tensor = None  # (num_envs, 4) - orientation as quaternion (x,y,z,w)
+    root_quat_w: torch.Tensor = None  # (num_envs, 4) - orientation as quaternion (w, x, y, z)
     root_vel_w: torch.Tensor = None  # (num_envs, 3) - linear velocity in world frame
     root_ang_vel_w: torch.Tensor = None  # (num_envs, 3) - angular velocity in world frame
 
@@ -26,7 +26,7 @@ class ArticulationData:
 
     # Body state (all rigid bodies/links)
     body_pos_w: torch.Tensor = None  # (num_envs, num_bodies, 3) - positions in world frame
-    body_quat_w: torch.Tensor = None  # (num_envs, num_bodies, 4) - orientations
+    body_quat_w: torch.Tensor = None  # (num_envs, num_bodies, 4) - orientations as quaternions (w, x, y, z)
     body_vel_w: torch.Tensor = None  # (num_envs, num_bodies, 3) - linear velocities
     body_ang_vel_w: torch.Tensor = None  # (num_envs, num_bodies, 3) - angular velocities
 

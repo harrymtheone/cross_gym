@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """Sub-module that provides a wrapper around the Python 3.7 onwards ``dataclasses`` module."""
-
 from __future__ import annotations
 
 import inspect

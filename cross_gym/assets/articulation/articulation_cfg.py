@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from dataclasses import MISSING
 
 from cross_gym.assets.asset_base import AssetBaseCfg
 from cross_gym.utils.configclass import configclass
@@ -20,7 +20,7 @@ class ArticulationCfg(AssetBaseCfg):
     class_type: type = Articulation
 
     # Asset file
-    file: Optional[str] = None  # Path to URDF/USD file
+    file: str = MISSING  # Path to URDF/USD file
 
     # Asset properties
     @configclass

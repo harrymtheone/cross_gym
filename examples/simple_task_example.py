@@ -141,7 +141,7 @@ class SimpleSceneCfg(InteractiveSceneCfg):
         # Initial state
         init_state=ArticulationCfg.InitStateCfg(
             pos=(0.0, 0.0, 0.6),  # Start 0.6m above ground
-            rot=(0.0, 0.0, 0.0, 1.0),  # Identity quaternion
+            rot=(1.0, 0.0, 0.0, 0.0),  # Identity quaternion (w, x, y, z)
         ),
     )
 

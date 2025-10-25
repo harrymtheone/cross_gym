@@ -93,7 +93,7 @@ class Articulation(AssetBase):
         # Root state
         self.data.root_pos_w = torch.zeros(self.num_envs, 3, device=device)
         self.data.root_quat_w = torch.zeros(self.num_envs, 4, device=device)
-        self.data.root_quat_w[:, 3] = 1.0  # Initialize to identity quaternion
+        self.data.root_quat_w[:, 0] = 1.0  # Initialize to identity quaternion
         self.data.root_vel_w = torch.zeros(self.num_envs, 3, device=device)
         self.data.root_ang_vel_w = torch.zeros(self.num_envs, 3, device=device)
 
@@ -105,7 +105,7 @@ class Articulation(AssetBase):
         # Body state
         self.data.body_pos_w = torch.zeros(self.num_envs, self.num_bodies, 3, device=device)
         self.data.body_quat_w = torch.zeros(self.num_envs, self.num_bodies, 4, device=device)
-        self.data.body_quat_w[:, :, 3] = 1.0
+        self.data.body_quat_w[:, :, 0] = 1.0  # Initialize to identity quaternion
         self.data.body_vel_w = torch.zeros(self.num_envs, self.num_bodies, 3, device=device)
         self.data.body_ang_vel_w = torch.zeros(self.num_envs, self.num_bodies, 3, device=device)
 
