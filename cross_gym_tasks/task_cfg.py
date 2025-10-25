@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
+from typing import TYPE_CHECKING
 
 from cross_gym.envs import ManagerBasedRLEnvCfg
 from cross_gym.utils.configclass import configclass
+
+if TYPE_CHECKING:
+    from cross_gym_rl.algorithms.ppo import PPOCfg
+    from cross_gym_rl.runners import OnPolicyRunnerCfg
 
 
 @configclass
@@ -48,14 +53,14 @@ class TaskCfg:
     # ========== Environment ==========
     env: ManagerBasedRLEnvCfg = MISSING
     """Environment configuration."""
-
+    
     # ========== Algorithm ==========
-    algorithm = MISSING
-    """Algorithm configuration (e.g., PPOCfg from cross_gym_rl)."""
-
+    algorithm: PPOCfg = MISSING
+    """Algorithm configuration (PPOCfg from cross_gym_rl)."""
+    
     # ========== Runner ==========
-    runner = MISSING
-    """Runner configuration (e.g., OnPolicyRunnerCfg from cross_gym_rl)."""
+    runner: OnPolicyRunnerCfg = MISSING
+    """Runner configuration (OnPolicyRunnerCfg from cross_gym_rl)."""
 
 
 __all__ = ["TaskCfg"]
