@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 import torch
 
 if TYPE_CHECKING:
-    from cross_gym.sim.sim_cfg_base import SimCfgBase
+    from . import SimulationContextCfg
 
 
 class SimulationContext(ABC):
@@ -28,7 +28,7 @@ class SimulationContext(ABC):
     # Class-level instance for singleton pattern
     _instance = None
 
-    def __init__(self, cfg: SimCfgBase):
+    def __init__(self, cfg: SimulationContextCfg):
         """Initialize the simulation context.
         
         Args:

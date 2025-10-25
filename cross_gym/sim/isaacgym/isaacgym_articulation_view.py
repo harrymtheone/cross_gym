@@ -1,5 +1,7 @@
 """IsaacGym articulation view - wraps articulated bodies (robots)."""
 
+from __future__ import annotations
+
 import torch
 from isaacgym import gymtorch
 

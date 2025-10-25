@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Tuple, Dict
 
 import torch
 
 # Type alias for vectorized environment step return
-VecEnvStepReturn = tuple[dict[str, torch.Tensor], torch.Tensor, torch.Tensor, torch.Tensor, dict[str, Any]]
+VecEnvStepReturn = Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, Any]]
 """Type alias for the return of the step function of a vectorized environment.
 
 Returns:
@@ -19,5 +19,5 @@ Returns:
     - info (dict): Additional information
 """
 
-VecEnvObs = dict[str, torch.Tensor]
+VecEnvObs = Dict[str, torch.Tensor]
 """Type alias for observations from a vectorized environment."""

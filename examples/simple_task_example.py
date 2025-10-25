@@ -13,12 +13,12 @@ Note: This is a minimal example for demonstration. A real task would need:
 - More sophisticated termination conditions
 """
 
-import torch
+try:
+    import isaacgym, torch
+except ImportError:
+    import torch
 
 from cross_gym import (
-    # Simulation
-    IsaacGymCfg,
-    PhysxCfg,
     # Scene
     InteractiveSceneCfg,
     ArticulationCfg,
@@ -31,95 +31,12 @@ from cross_gym import (
     RewardManagerCfg,
     TerminationManagerCfg,
     ManagerTermCfg,
+    # MDP terms - use from library!
+    mdp,
 )
+# Check if IsaacGym is available
+from cross_gym import IsaacGymCfg
 from cross_gym.utils.configclass import configclass
-
-
-# ============================================================================
-# MDP Terms (Observations, Actions, Rewards, Terminations)
-# ============================================================================
-
-def base_lin_vel(env) -> torch.Tensor:
-    """Observation: Base linear velocity in world frame.
-    
-    Returns:
-        Linear velocity (num_envs, 3)
-    """
-    robot = env.scene["robot"]
-    return robot.data.root_vel_w
-
-
-def base_ang_vel(env) -> torch.Tensor:
-    """Observation: Base angular velocity in world frame.
-    
-    Returns:
-        Angular velocity (num_envs, 3)
-    """
-    robot = env.scene["robot"]
-    return robot.data.root_ang_vel_w
-
-
-def joint_pos(env) -> torch.Tensor:
-    """Observation: Joint positions.
-    
-    Returns:
-        Joint positions (num_envs, num_dof)
-    """
-    robot = env.scene["robot"]
-    return robot.data.joint_pos
-
-
-def joint_vel(env) -> torch.Tensor:
-    """Observation: Joint velocities.
-    
-    Returns:
-        Joint velocities (num_envs, num_dof)
-    """
-    robot = env.scene["robot"]
-    return robot.data.joint_vel
-
-
-def alive_reward(env) -> torch.Tensor:
-    """Reward: Constant reward for staying alive.
-    
-    Returns:
-        Reward (num_envs,)
-    """
-    return torch.ones(env.num_envs, device=env.device)
-
-
-def energy_penalty(env) -> torch.Tensor:
-    """Reward: Penalty for using energy (torque squared).
-    
-    Returns:
-        Penalty (num_envs,)
-    """
-    robot = env.scene["robot"]
-    torques = robot.data.applied_torques
-    return -torch.sum(torques ** 2, dim=-1)
-
-
-def time_out(env) -> torch.Tensor:
-    """Termination: Episode timeout.
-    
-    Returns:
-        Boolean tensor (num_envs,)
-    """
-    return env.episode_length_buf >= env.max_episode_length
-
-
-def base_height_termination(env, min_height: float = 0.3) -> torch.Tensor:
-    """Termination: Robot base fell below minimum height.
-    
-    Args:
-        min_height: Minimum allowed base height
-    
-    Returns:
-        Boolean tensor (num_envs,)
-    """
-    robot = env.scene["robot"]
-    base_height = robot.data.root_pos_w[:, 2]
-    return base_height < min_height
 
 
 # ============================================================================
@@ -155,7 +72,7 @@ class SimpleTaskCfg(ManagerBasedRLEnvCfg):
         dt=0.01,  # 100 Hz physics
         device="cuda:0",
         headless=True,
-        physx=PhysxCfg(
+        physx=IsaacGymCfg.PhysxCfg(
             solver_type=1,
             num_position_iterations=4,
             num_velocity_iterations=1,
@@ -173,24 +90,24 @@ class SimpleTaskCfg(ManagerBasedRLEnvCfg):
     actions: ActionManagerCfg = ActionManagerCfg()
     # actions.joint_effort = ... # TODO: Define action term
 
-    # Observations
+    # Observations - use library functions!
     observations: ObservationManagerCfg = ObservationManagerCfg()
     observations.policy = ObservationGroupCfg(concatenate=True)
-    observations.policy.base_lin_vel = ManagerTermCfg(func=base_lin_vel)
-    observations.policy.base_ang_vel = ManagerTermCfg(func=base_ang_vel)
-    observations.policy.joint_pos = ManagerTermCfg(func=joint_pos)
-    observations.policy.joint_vel = ManagerTermCfg(func=joint_vel)
+    observations.policy.base_lin_vel = ManagerTermCfg(func=mdp.observations.base_lin_vel)
+    observations.policy.base_ang_vel = ManagerTermCfg(func=mdp.observations.base_ang_vel)
+    observations.policy.joint_pos = ManagerTermCfg(func=mdp.observations.joint_pos)
+    observations.policy.joint_vel = ManagerTermCfg(func=mdp.observations.joint_vel)
 
-    # Rewards
+    # Rewards - use library functions!
     rewards: RewardManagerCfg = RewardManagerCfg()
-    rewards.alive = ManagerTermCfg(func=alive_reward, weight=1.0)
-    rewards.energy = ManagerTermCfg(func=energy_penalty, weight=-0.001)
+    rewards.alive = ManagerTermCfg(func=mdp.rewards.alive_reward, weight=1.0)
+    rewards.energy = ManagerTermCfg(func=mdp.rewards.energy_penalty, weight=-0.001)
 
-    # Terminations
+    # Terminations - use library functions!
     terminations: TerminationManagerCfg = TerminationManagerCfg()
-    terminations.time_out = ManagerTermCfg(func=time_out)
+    terminations.time_out = ManagerTermCfg(func=mdp.terminations.time_out)
     terminations.base_height = ManagerTermCfg(
-        func=base_height_termination,
+        func=mdp.terminations.base_height_termination,
         params={"min_height": 0.3}
     )
 
@@ -245,11 +162,10 @@ def main():
     # print("\nDone!")
 
     print("\n" + "=" * 80)
-    print("NOTE: This is a configuration example only.")
-    print("To actually run, you need:")
+    print("NOTE: This is a configuration example.")
+    print("\nTo actually run, you need:")
     print("  1. Robot URDF file")
     print("  2. Action term implementation")
-    print("  3. Proper simulator setup")
     print("=" * 80)
 
 

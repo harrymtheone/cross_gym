@@ -167,10 +167,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cross_gym.sim.sim_cfg_base import SimCfgBase
+   from cross_gym.sim.simulation_context_cfg import SimulationContextCfg
 
-def __init__(self, cfg: SimCfgBase):  # Now has type hint!
-    ...
+
+def __init__(self, cfg: SimulationContextCfg):  # Now has type hint!
+   ...
 ```
 
 ---

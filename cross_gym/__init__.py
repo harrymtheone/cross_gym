@@ -7,101 +7,19 @@ Cross-Gym provides a unified interface for robot RL across multiple simulators
 __version__ = "0.1.0"
 
 # Core simulator imports
-from cross_gym.sim import (
-    SimulationContext,
-    SimCfgBase,
-)
-
-# Simulator-specific imports (when available)
-try:
-    from cross_gym.sim import IsaacGymCfg, PhysxCfg, IsaacGymContext
-except ImportError:
-    IsaacGymCfg = None
-    PhysxCfg = None
-
-try:
-    from cross_gym.sim import GenesisCfg
-except ImportError:
-    GenesisCfg = None
+from .sim import *
 
 # Asset imports
-from cross_gym.assets import (
-    AssetBase,
-    AssetBaseCfg,
-    Articulation,
-    ArticulationCfg,
-    ArticulationData,
-)
+from .assets import *
 
 # Scene imports
-from cross_gym.scene import (
-    InteractiveScene,
-    InteractiveSceneCfg,
-)
+from .scene import *
 
 # Environment imports
-from cross_gym.envs import (
-    ManagerBasedEnv,
-    ManagerBasedEnvCfg,
-    ManagerBasedRLEnv,
-    ManagerBasedRLEnvCfg,
-)
+from .envs import *
 
 # Manager imports
-from cross_gym.managers import (
-    ActionManager,
-    ActionManagerCfg,
-    ObservationManager,
-    ObservationManagerCfg,
-    ObservationGroupCfg,
-    RewardManager,
-    RewardManagerCfg,
-    TerminationManager,
-    TerminationManagerCfg,
-    CommandManager,
-    CommandManagerCfg,
-    EventManager,
-    EventManagerCfg,
-    ManagerTermCfg,
-)
+from .managers import *
 
-__all__ = [
-    # Simulation
-    "SimulationContext",
-    "SimCfgBase",
-    # Assets
-    "AssetBase",
-    "AssetBaseCfg",
-    "Articulation",
-    "ArticulationCfg",
-    "ArticulationData",
-    # Scene
-    "InteractiveScene",
-    "InteractiveSceneCfg",
-    # Environments
-    "ManagerBasedEnv",
-    "ManagerBasedEnvCfg",
-    "ManagerBasedRLEnv",
-    "ManagerBasedRLEnvCfg",
-    # Managers
-    "ActionManager",
-    "ActionManagerCfg",
-    "ObservationManager",
-    "ObservationManagerCfg",
-    "ObservationGroupCfg",
-    "RewardManager",
-    "RewardManagerCfg",
-    "TerminationManager",
-    "TerminationManagerCfg",
-    "CommandManager",
-    "CommandManagerCfg",
-    "EventManager",
-    "EventManagerCfg",
-    "ManagerTermCfg",
-]
-
-# Add simulator-specific exports if available
-if IsaacGymCfg is not None:
-    __all__.extend(["IsaacGymCfg", "PhysxCfg", "IsaacGymContext"])
-if GenesisCfg is not None:
-    __all__.append("GenesisCfg")
+# MDP terms
+from .envs import mdp

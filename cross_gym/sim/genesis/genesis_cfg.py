@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from cross_gym.sim.sim_cfg_base import SimCfgBase
+from cross_gym.sim.simulation_context_cfg import SimulationContextCfg
 from cross_gym.utils.configclass import configclass
 
 
@@ -55,7 +55,7 @@ class GenesisViewerOptionsCfg:
 
 
 @configclass
-class GenesisCfg(SimCfgBase):
+class GenesisCfg(SimulationContextCfg):
     """Configuration for Genesis simulator.
     
     This contains all the parameters specific to Genesis.

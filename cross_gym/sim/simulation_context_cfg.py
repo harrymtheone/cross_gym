@@ -8,7 +8,7 @@ from cross_gym.utils.configclass import configclass
 
 
 @configclass
-class SimCfgBase:
+class SimulationContextCfg:
     """Base configuration for simulation contexts.
     
     Each simulator has its own config class that inherits from this.
