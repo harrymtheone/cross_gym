@@ -68,11 +68,6 @@ class VecEnv(ABC):
         """Device on which environment tensors are stored."""
         return self._device
 
-    @property
-    def unwrapped(self) -> VecEnv:
-        """Return the base non-wrapped environment."""
-        return self
-
     @abstractmethod
     def step(self, action: dict[str, torch.Tensor]) -> VecEnvStepReturn:
         pass

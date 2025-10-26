@@ -3,6 +3,7 @@
 import torch
 
 
+@torch.jit.script
 def quat_mul(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
     """Multiply two quaternions.
     
@@ -24,6 +25,7 @@ def quat_mul(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
     return torch.stack([w, x, y, z], dim=-1)
 
 
+@torch.jit.script
 def quat_rotate(q: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
     """Rotate a vector by a quaternion.
     
@@ -43,6 +45,7 @@ def quat_rotate(q: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
     return a + b + c
 
 
+@torch.jit.script
 def quat_conjugate(q: torch.Tensor) -> torch.Tensor:
     """Compute quaternion conjugate.
     
@@ -53,6 +56,3 @@ def quat_conjugate(q: torch.Tensor) -> torch.Tensor:
         Conjugated quaternion (w, -x, -y, -z)
     """
     return torch.cat([q[..., 0:1], -q[..., 1:4]], dim=-1)
-
-
-__all__ = ["quat_mul", "quat_rotate", "quat_conjugate"]

@@ -28,10 +28,10 @@ class DirectRLEnvCfg:
     """Scene configuration."""
 
     # ========== Episode ==========
-    decimation: int = 2
+    decimation: int = MISSING
     """Number of simulation steps per environment step."""
 
-    episode_length_s: float = 10.0
+    episode_length_s: float = MISSING
     """Episode length in seconds."""
 
     # ========== Actions ==========
@@ -42,17 +42,17 @@ class DirectRLEnvCfg:
     @configclass
     class ControlCfg:
         """PD controller configuration."""
-        action_scale: float = 0.5
+        action_scale: float = MISSING
         """Scale factor for actions to joint positions."""
 
         clip_actions: float = 100.0
         """Clip actions to this range."""
 
         stiffness: dict = {}
-        """Joint stiffness (kp) for PD controller. {joint_pattern: kp}"""
+        """DOF stiffness (kp) for PD controller. {dof_pattern: kp}"""
 
         damping: dict = {}
-        """Joint damping (kd) for PD controller. {joint_pattern: kd}"""
+        """DOF damping (kd) for PD controller. {dof_pattern: kd}"""
 
     control: ControlCfg = ControlCfg()
 
@@ -72,8 +72,8 @@ class DirectRLEnvCfg:
         ang_vel: tuple = (0.0, 0.0, 0.0)
         """Initial angular velocity."""
 
-        default_joint_angles: dict = {}
-        """Default joint angles. {joint_pattern: angle}"""
+        default_dof_angles: dict = {}
+        """Default DOF angles. {dof_pattern: angle}"""
 
     init_state: InitStateCfg = InitStateCfg()
 
