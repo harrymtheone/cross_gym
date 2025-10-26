@@ -82,15 +82,14 @@ class LocomotionEnv(DirectRLEnv):
                     break
 
     def _refresh_base_state(self):
-        """Refresh base state in base frame."""
-        # Transform velocities to base frame
-        quat_inv = math_utils.quat_conjugate(self.robot.data.root_quat_w)
-        self.base_lin_vel = math_utils.quat_rotate(quat_inv, self.robot.data.root_vel_w)
-        self.base_ang_vel = math_utils.quat_rotate(quat_inv, self.robot.data.root_ang_vel_w)
-
-        # Projected gravity
-        gravity_vec = torch.tensor([0.0, 0.0, -1.0], device=self.device).repeat(self.num_envs, 1)
-        self.projected_gravity = math_utils.quat_rotate(quat_inv, gravity_vec)
+        """Refresh base state in base frame.
+        
+        Uses cached properties from ArticulationData to avoid redundant computation.
+        """
+        # Use cached properties (computed once per timestep, reused multiple times)
+        self.base_lin_vel = self.robot.data.root_lin_vel_b
+        self.base_ang_vel = self.robot.data.root_ang_vel_b
+        self.projected_gravity = self.robot.data.projected_gravity_b
 
     def process_actions(self, actions: torch.Tensor):
         """Process actions using PD controller.

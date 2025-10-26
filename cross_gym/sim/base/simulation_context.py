@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
+from . import ArticulationView
+
 if TYPE_CHECKING:
     from . import SimulationContextCfg
 
@@ -135,7 +137,7 @@ class SimulationContext(ABC):
     # ========== Scene Management ==========
 
     @abstractmethod
-    def create_articulation_view(self, prim_path: str, num_envs: int) -> Any:
+    def create_articulation_view(self, prim_path: str, num_envs: int) -> ArticulationView:
         """Create a view for articulated bodies (robots).
         
         Args:
