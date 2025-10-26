@@ -9,6 +9,9 @@ __version__ = "0.1.0"
 # Core simulator imports
 from .sim import *
 
+# Actuators
+from .actuators import *
+
 # Asset imports
 from .assets import *
 

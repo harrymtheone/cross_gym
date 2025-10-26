@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import torch
 
+from cross_gym.actuators import ActuatorCommand, ActuatorBase
 from cross_gym.assets import AssetBase
 from cross_gym.sim import ArticulationView
 from . import ArticulationData
@@ -24,6 +26,7 @@ class Articulation(AssetBase):
     """
     _backend: ArticulationView = None
     data: ArticulationData = None
+    actuators: dict[str, ActuatorBase] = {}
 
     def __init__(self, cfg: ArticulationCfg):
         """Initialize articulation.
@@ -83,6 +86,69 @@ class Articulation(AssetBase):
         # Create data container (copies properties from backend)
         self.data = ArticulationData(self._backend, self.device)
 
+        # Initialize simulation command buffers (sent to sim after actuator processing)
+        self._dof_pos_target_sim = torch.zeros(num_envs, self.num_dof, device=self.device)
+        self._dof_vel_target_sim = torch.zeros(num_envs, self.num_dof, device=self.device)
+        self._dof_effort_target_sim = torch.zeros(num_envs, self.num_dof, device=self.device)
+
+        # Process actuators (create actuator instances from config)
+        self._process_actuators_cfg()
+
+    def _process_actuators_cfg(self):
+        """Process actuator configurations and create actuator instances."""
+        if len(self.cfg.actuators) == 0:
+            return
+
+        for actuator_name, actuator_cfg in self.cfg.actuators.items():
+            # Find joints matching the patterns
+            joint_names = []
+            joint_ids = []
+
+            for pattern in actuator_cfg.joint_names_expr:
+                for i, dof_name in enumerate(self.dof_names):
+                    if re.match(pattern, dof_name):
+                        if i not in joint_ids:  # Avoid duplicates
+                            joint_names.append(dof_name)
+                            joint_ids.append(i)
+
+            if len(joint_ids) == 0:
+                print(f"[WARNING] Actuator '{actuator_name}' matched no joints")
+                continue
+
+            # Parse gains (can be single value or dict)
+            stiffness = self._parse_dof_parameter(actuator_cfg.stiffness, joint_names)
+            damping = self._parse_dof_parameter(actuator_cfg.damping, joint_names)
+
+            # Parse effort limits
+            if actuator_cfg.effort_limit is not None:
+                # Use default (TODO: get from URDF)
+                effort_limit = torch.full(
+                    (self.num_envs, len(joint_ids)),
+                    100.0,
+                    device=self.device
+                )
+            else:
+                effort_limit = self._parse_dof_parameter(actuator_cfg.effort_limit, joint_names)
+
+            # Create actuator instance
+            actuator = actuator_cfg.class_type(
+                num_envs=self.num_envs,
+                num_joints=len(joint_ids),
+                stiffness=stiffness,
+                damping=damping,
+                effort_limit=effort_limit,
+                device=self.device,
+            )
+
+            # Store DOF indices
+            actuator.dof_indices = torch.tensor(joint_ids, dtype=torch.long, device=self.device)
+            actuator.dof_names = joint_names
+
+            # Add to actuators dict
+            self.actuators[actuator_name] = actuator
+
+            print(f"[Articulation] Actuator '{actuator_name}': {len(joint_ids)} joints")
+
     def reset(self, env_ids: torch.Tensor | None = None):
         """Reset articulation state for specified environments.
         
@@ -122,45 +188,124 @@ class Articulation(AssetBase):
     def write_data_to_sim(self):
         """Write articulation data to simulation.
         
-        This writes buffered joint torques to the simulator.
+        Applies actuator models to compute torques from targets,
+        then writes torques to simulator.
         """
-        self._backend.set_joint_torques(self.data.applied_torques)
+        if len(self.actuators) > 0:
+            # Apply actuator models
+            self._apply_actuator_model()
+        else:
+            # No actuators, use user targets directly
+            self._dof_effort_target_sim[:] = self.data.dof_effort_target
 
-    # ========== Convenience Methods ==========
+        self._backend.set_joint_torques(self._dof_effort_target_sim)
 
-    def set_joint_position_target(self, targets: torch.Tensor, env_ids: torch.Tensor | None = None):
-        """Set joint position targets (for position control mode).
+    def _apply_actuator_model(self):
+        """Process DOF commands by forwarding them to actuators.
+        
+        The targets are first processed using actuator models. The actuator models
+        compute the DOF-level simulation commands based on the user-specified targets.
+        """
+        # Process each actuator group
+        for actuator in self.actuators.values():
+            # Prepare input for actuator model from user targets
+            control_action = ActuatorCommand(
+                joint_positions=self.data.dof_pos_target[:, actuator.dof_indices],
+                joint_velocities=self.data.dof_vel_target[:, actuator.dof_indices],
+                joint_efforts=self.data.dof_effort_target[:, actuator.dof_indices],
+            )
+
+            # Compute DOF command from the actuator model
+            control_action_output = actuator.compute(
+                control_action,
+                joint_pos=self.data.dof_pos[:, actuator.dof_indices],
+                joint_vel=self.data.dof_vel[:, actuator.dof_indices],
+            )
+
+            # Update simulation targets (these are sent to simulation)
+            if control_action_output.joint_positions is not None:
+                self._dof_pos_target_sim[:, actuator.dof_indices] = control_action_output.joint_positions
+            if control_action_output.joint_velocities is not None:
+                self._dof_vel_target_sim[:, actuator.dof_indices] = control_action_output.joint_velocities
+            if control_action_output.joint_efforts is not None:
+                self._dof_effort_target_sim[:, actuator.dof_indices] = control_action_output.joint_efforts
+
+            # Update state of the actuator model (for logging/inspection)
+            self.data.computed_torque[:, actuator.dof_indices] = actuator.computed_torque
+            self.data.applied_torque[:, actuator.dof_indices] = actuator.applied_torque
+
+    def _parse_dof_parameter(
+            self,
+            param: float | dict[str, float],
+            dof_names: list[str],
+    ) -> torch.Tensor:
+        """Parse DOF parameter that can be single value or dict.
+        
+        Args:
+            param: Single value or dict {dof_pattern: value}
+            dof_names: List of DOF names
+            
+        Returns:
+            Parameter tensor (num_envs, num_dofs)
+        """
+        num_dofs = len(dof_names)
+        param_tensor = torch.zeros(self.num_envs, num_dofs, device=self.device)
+
+        if isinstance(param, (int, float)):
+            # Single value for all DOFs
+            param_tensor[:] = param
+
+        elif isinstance(param, dict):
+            # Different values per DOF pattern
+            for i, dof_name in enumerate(dof_names):
+                # Find matching pattern
+                for pattern, value in param.items():
+                    if re.match(pattern, dof_name):
+                        param_tensor[:, i] = value
+                        break
+        else:
+            raise ValueError(f"Invalid parameter type: {type(param)}")
+
+        return param_tensor
+
+    # ========== DOF Command Methods ==========
+
+    def set_dof_position_target(self, targets: torch.Tensor, env_ids: torch.Tensor | None = None):
+        """Set DOF position targets.
+        
+        Stores targets which will be processed by actuators in write_data_to_sim().
         
         Args:
             targets: Target positions (num_envs, num_dof) or (num_resets, num_dof)
             env_ids: Environment IDs. If None, apply to all.
         """
-        # This would be used with PD controllers / position mode
-        # For now, just store (actual PD control would be in actuator module)
         if env_ids is None:
-            env_ids = torch.arange(self.num_envs, device=self.device)
+            self.data.dof_pos_target[:] = targets
+        else:
+            self.data.dof_pos_target[env_ids] = targets
 
-        # Placeholder - will be implemented with actuator module
-        pass
-
-    def set_joint_velocity_target(self, targets: torch.Tensor, env_ids: torch.Tensor | None = None):
-        """Set joint velocity targets (for velocity control mode).
+    def set_dof_velocity_target(self, targets: torch.Tensor, env_ids: torch.Tensor | None = None):
+        """Set DOF velocity targets.
+        
+        Stores targets which will be processed by actuators in write_data_to_sim().
         
         Args:
             targets: Target velocities (num_envs, num_dof) or (num_resets, num_dof)
             env_ids: Environment IDs. If None, apply to all.
         """
-        # Placeholder - will be implemented with actuator module
-        pass
+        if env_ids is None:
+            self.data.dof_vel_target[:] = targets
+        else:
+            self.data.dof_vel_target[env_ids] = targets
 
-    def set_joint_effort_target(self, efforts: torch.Tensor, env_ids: torch.Tensor | None = None):
-        """Set joint efforts/torques directly.
+    def set_dof_effort_target(self, efforts: torch.Tensor, env_ids: torch.Tensor | None = None):
+        """Set DOF effort/torque targets directly.
         
         Args:
             efforts: Desired torques (num_envs, num_dof) or (num_resets, num_dof)
             env_ids: Environment IDs. If None, apply to all.
         """
         if env_ids is None:
-            self.data.applied_torques[:] = efforts
+            self.data.dof_effort_target[:] = efforts
         else:
-            self.data.applied_torques[env_ids] = efforts
+            self.data.dof_effort_target[env_ids] = efforts

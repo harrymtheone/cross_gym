@@ -51,5 +51,19 @@ class ArticulationCfg(AssetBaseCfg):
     # Self collisions
     self_collisions: bool = False
 
-    # Actuator configuration (optional, can be None for passive joints)
-    actuator_cfg: any = None  # Will be ActuatorCfg when we implement actuators
+    # Actuator groups
+    actuators: dict = {}
+    """Actuator models for different joint groups.
+    
+    Keys are group names, values are ActuatorBaseCfg instances.
+    If empty, no actuator models are used (direct torque control).
+    
+    Example:
+        actuators = {
+            "legs": IdealPDActuatorCfg(
+                joint_names_expr=[".*_hip_.*", ".*_knee_.*"],
+                stiffness=20.0,
+                damping=0.5,
+            ),
+        }
+    """

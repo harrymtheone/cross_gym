@@ -30,6 +30,33 @@ class ArticulationData:
     num_bodies: int = None
     """Number of rigid bodies/links."""
 
+    # ========== DOF Commands ==========
+    dof_pos_target: torch.Tensor = None
+    """DOF position targets commanded by user. Shape (num_envs, num_dof).
+    
+    For explicit actuators: Used to compute torques.
+    For implicit actuators: Sent directly to simulation.
+    """
+
+    dof_vel_target: torch.Tensor = None
+    """DOF velocity targets commanded by user. Shape (num_envs, num_dof)."""
+
+    dof_effort_target: torch.Tensor = None
+    """DOF effort targets commanded by user. Shape (num_envs, num_dof)."""
+
+    # ========== Computed Torques (Set by Actuators) ==========
+    computed_torque: torch.Tensor = None
+    """DOF torques computed by actuators (before clipping). Shape (num_envs, num_dof).
+    
+    This is the raw torque output before any clipping is applied.
+    """
+
+    applied_torque: torch.Tensor = None
+    """DOF torques applied to simulation (after clipping). Shape (num_envs, num_dof).
+    
+    These torques are set into the simulation after clipping based on effort limits.
+    """
+
     def __init__(self, backend: ArticulationView, device: torch.device):
         """Initialize articulation data.
         
@@ -70,7 +97,7 @@ class ArticulationData:
         self._root_lin_vel_b = TimestampedBuffer()
         self._root_ang_vel_b = TimestampedBuffer()
         self._projected_gravity_b = TimestampedBuffer()
-    
+
     def update(self, dt: float):
         """Update simulation timestamp.
         
@@ -79,9 +106,9 @@ class ArticulationData:
         """
         self._backend.update(dt)
         self._sim_timestamp += dt
-    
+
     # ========== Root State (World Frame) ==========
-    
+
     @property
     def root_pos_w(self) -> torch.Tensor:
         """Root position in world frame. Shape (num_envs, 3)."""
@@ -89,7 +116,7 @@ class ArticulationData:
             self._root_pos_w.data = self._backend.get_root_pos_w()
             self._root_pos_w.timestamp = self._sim_timestamp
         return self._root_pos_w.data
-    
+
     @property
     def root_quat_w(self) -> torch.Tensor:
         """Root orientation (w,x,y,z) in world frame. Shape (num_envs, 4)."""
@@ -97,7 +124,7 @@ class ArticulationData:
             self._root_quat_w.data = self._backend.get_root_quat_w()
             self._root_quat_w.timestamp = self._sim_timestamp
         return self._root_quat_w.data
-    
+
     @property
     def root_vel_w(self) -> torch.Tensor:
         """Root linear velocity in world frame. Shape (num_envs, 3)."""
@@ -105,7 +132,7 @@ class ArticulationData:
             self._root_vel_w.data = self._backend.get_root_lin_vel_w()
             self._root_vel_w.timestamp = self._sim_timestamp
         return self._root_vel_w.data
-    
+
     @property
     def root_ang_vel_w(self) -> torch.Tensor:
         """Root angular velocity in world frame. Shape (num_envs, 3)."""
