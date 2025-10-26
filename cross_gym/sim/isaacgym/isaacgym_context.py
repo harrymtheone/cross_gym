@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from cross_gym.sim.simulation_context import SimulationContext
+from cross_gym.sim import SimulationContext
+from . import IsaacGymRigidObjectView, IsaacGymArticulationView
 
 if TYPE_CHECKING:
-    from .isaacgym_cfg import IsaacGymCfg
+    from . import IsaacGymCfg
 
 try:
-    from isaacgym import gymapi, gymutil
+    from isaacgym import gymapi, gymutil  # noqa
 
     ISAACGYM_AVAILABLE = True
 
@@ -158,7 +159,7 @@ class IsaacGymContext(SimulationContext):
             # Sync frame time
             self.gym.sync_frame_time(self.sim)
 
-    def create_articulation_view(self, prim_path: str, num_envs: int) -> Any:
+    def create_articulation_view(self, prim_path: str, num_envs: int) -> IsaacGymArticulationView:
         """Create articulation view for IsaacGym.
         
         Args:
@@ -168,10 +169,9 @@ class IsaacGymContext(SimulationContext):
         Returns:
             IsaacGymArticulationView object
         """
-        from .isaacgym_articulation_view import IsaacGymArticulationView
         return IsaacGymArticulationView(self.gym, self.sim, prim_path, num_envs, self.device)
 
-    def create_rigid_object_view(self, prim_path: str, num_envs: int) -> Any:
+    def create_rigid_object_view(self, prim_path: str, num_envs: int) -> IsaacGymRigidObjectView:
         """Create rigid object view for IsaacGym.
         
         Args:
@@ -181,11 +181,14 @@ class IsaacGymContext(SimulationContext):
         Returns:
             IsaacGymRigidObjectView object
         """
-        from .isaacgym_rigid_object_view import IsaacGymRigidObjectView
         return IsaacGymRigidObjectView(self.gym, self.sim, prim_path, num_envs, self.device)
 
-    def add_ground_plane(self, static_friction: float = 1.0, dynamic_friction: float = 1.0,
-                         restitution: float = 0.0):
+    def add_ground_plane(
+            self,
+            static_friction: float = 1.0,
+            dynamic_friction: float = 1.0,
+            restitution: float = 0.0
+    ):
         """Add a ground plane to the simulation.
         
         Args:
@@ -199,11 +202,3 @@ class IsaacGymContext(SimulationContext):
         plane_params.dynamic_friction = dynamic_friction
         plane_params.restitution = restitution
         self.gym.add_ground(self.sim, plane_params)
-
-    def get_physics_handle(self) -> Any:
-        """Get IsaacGym-specific physics handle.
-        
-        Returns:
-            Tuple of (gym, sim) handles
-        """
-        return (self.gym, self.sim)

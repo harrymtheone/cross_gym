@@ -106,8 +106,8 @@ class LocomotionEnv(DirectRLEnv):
 
         # Compute torques using PD controller
         target_dof_pos = self.actions * self.cfg.control.action_scale + self.default_dof_pos
-        self.torques[:] = self.p_gains * (target_dof_pos - self.robot.data.joint_pos)
-        self.torques[:] -= self.d_gains * self.robot.data.joint_vel
+        self.torques[:] = self.p_gains * (target_dof_pos - self.robot.data.dof_pos)
+        self.torques[:] -= self.d_gains * self.robot.data.dof_vel
 
         # Apply torques
         self.robot.set_joint_effort_target(self.torques)
@@ -139,8 +139,8 @@ class LocomotionEnv(DirectRLEnv):
             self.base_lin_vel,  # 3
             self.base_ang_vel,  # 3
             self.projected_gravity,  # 3
-            self.robot.data.joint_pos,  # num_dof
-            self.robot.data.joint_vel,  # num_dof
+            self.robot.data.dof_pos,  # num_dof
+            self.robot.data.dof_vel,  # num_dof
             self.actions,  # num_actions (last action)
         ], dim=-1)
 

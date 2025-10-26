@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import torch
-from isaacgym import gymtorch
+
+try:
+    from isaacgym import gymtorch  # noqa
+
+except ImportError as e:
+    if e.msg == "'PyTorch was imported before isaacgym modules.  Please import torch after isaacgym modules.'":
+        raise ImportError(e)
 
 
 class IsaacGymArticulationView:
@@ -29,20 +35,18 @@ class IsaacGymArticulationView:
         self.num_envs = num_envs
         self.device = device
 
-        # These will be set when articulation is added to envs
-        self.num_dof = 0
-        self.num_bodies = 0
-        self._dof_names = []
-        self._body_names = []
+        # Properties (set after env creation)
+        self.num_dof: int = 0
+        self.num_bodies: int = 0
+        self._dof_names: list[str] = []
+        self._body_names: list[str] = []
 
         # Tensors (will be initialized after prepare_sim)
-        self._root_state = None
-        self._dof_state = None
-        self._rigid_body_states = None
-        self._contact_forces = None
-
-        # For torque control
-        self._torques = None
+        self._root_state: torch.Tensor = None
+        self._dof_state: torch.Tensor = None
+        self._rigid_body_states: torch.Tensor = None
+        self._contact_forces: torch.Tensor = None
+        self._torques: torch.Tensor = None
 
     def initialize_tensors(self):
         """Initialize state tensors after sim.prepare_sim() is called."""

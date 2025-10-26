@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import torch
 
 from cross_gym.assets import AssetBase
-from . import ArticulationData, ArticulationView
+from cross_gym.sim import ArticulationView
+from . import ArticulationData
 
 if TYPE_CHECKING:
     from . import ArticulationCfg
@@ -21,6 +22,8 @@ class Articulation(AssetBase):
     - Methods to set joint commands (torques, positions, velocities)
     - Automatic state updates from simulation
     """
+    _backend: ArticulationView = None
+    data: ArticulationData = None
 
     def __init__(self, cfg: ArticulationCfg):
         """Initialize articulation.
@@ -31,24 +34,6 @@ class Articulation(AssetBase):
         super().__init__(cfg)
         self.cfg: ArticulationCfg = cfg
 
-        # Create backend view (simulator-specific)
-        # This will be None until the scene creates environments
-        self._backend: ArticulationView = None
-
-        # Articulation properties
-        self.num_dof = 0
-        self.num_bodies = 0
-        self.dof_names: list[str] = []
-        self.body_names: list[str] = []
-
-        # Data container
-        self.data = ArticulationData()
-
-        # Joint limits
-        self.dof_pos_limits: torch.Tensor | None = None  # (num_dof, 2) - [lower, upper]
-        self.dof_vel_limits: torch.Tensor | None = None  # (num_dof,)
-        self.dof_effort_limits: torch.Tensor | None = None  # (num_dof,)
-
     @property
     def num_instances(self) -> int:
         """Number of articulation instances.
@@ -57,6 +42,26 @@ class Articulation(AssetBase):
             Number of instances (num_envs)
         """
         return self.num_envs
+
+    @property
+    def num_dof(self) -> int:
+        """Number of degrees of freedom."""
+        return self.data.num_dof
+
+    @property
+    def num_bodies(self) -> int:
+        """Number of rigid bodies."""
+        return self.data.num_bodies
+
+    @property
+    def dof_names(self) -> list[str]:
+        """DOF names."""
+        return self.data.dof_names
+
+    @property
+    def body_names(self) -> list[str]:
+        """Body/link names."""
+        return self.data.body_names
 
     def initialize(self, env_ids: torch.Tensor, num_envs: int):
         """Initialize articulation after environments are created.
@@ -71,48 +76,12 @@ class Articulation(AssetBase):
 
         # Create simulator-specific backend view
         self._backend = self.sim.create_articulation_view(self.cfg.prim_path, num_envs)
-        
-        # Get properties from backend
-        self.num_dof = self._backend.num_dof
-        self.num_bodies = self._backend.num_bodies
-        self.dof_names = self._backend._dof_names
-        self.body_names = self._backend._body_names
-        
-        # Initialize data tensors
-        self._initialize_data_tensors()
-        
+
         # Initialize backend tensors
         self._backend.initialize_tensors()
 
-    def _initialize_data_tensors(self):
-        """Initialize data container tensors with proper shapes."""
-        num_envs, num_dof, num_bodies = self.num_envs, self.num_dof, self.num_bodies
-        device = self.device
-        
-        # Root state
-        self.data.root_pos_w = torch.zeros(num_envs, 3, device=device)
-        self.data.root_quat_w = torch.zeros(num_envs, 4, device=device)
-        self.data.root_quat_w[:, 0] = 1.0  # Initialize to identity quaternion
-        self.data.root_vel_w = torch.zeros(num_envs, 3, device=device)
-        self.data.root_ang_vel_w = torch.zeros(num_envs, 3, device=device)
-
-        # Joint state
-        self.data.joint_pos = torch.zeros(num_envs, num_dof, device=device)
-        self.data.joint_vel = torch.zeros(num_envs, num_dof, device=device)
-        self.data.joint_acc = torch.zeros(num_envs, num_dof, device=device)
-
-        # Body state
-        self.data.body_pos_w = torch.zeros(num_envs, num_bodies, 3, device=device)
-        self.data.body_quat_w = torch.zeros(num_envs, num_bodies, 4, device=device)
-        self.data.body_quat_w[:, :, 0] = 1.0  # Initialize to identity quaternion
-        self.data.body_vel_w = torch.zeros(num_envs, num_bodies, 3, device=device)
-        self.data.body_ang_vel_w = torch.zeros(num_envs, num_bodies, 3, device=device)
-
-        # Contact forces
-        self.data.net_contact_forces = torch.zeros(num_envs, num_bodies, 3, device=device)
-
-        # Applied torques
-        self.data.applied_torques = torch.zeros(num_envs, num_dof, device=device)
+        # Create data container (copies properties from backend)
+        self.data = ArticulationData(self._backend, self.device)
 
     def reset(self, env_ids: torch.Tensor | None = None):
         """Reset articulation state for specified environments.
@@ -134,11 +103,11 @@ class Articulation(AssetBase):
 
         # Set in backend
         self._backend.set_root_state(root_pos, root_quat, root_lin_vel, root_ang_vel, env_ids)
-        
+
         # Reset joint state to zeros (or can be configured)
         joint_pos = torch.zeros(num_resets, self.num_dof, device=self.device)
         joint_vel = torch.zeros(num_resets, self.num_dof, device=self.device)
-        
+
         self._backend.set_joint_state(joint_pos, joint_vel, env_ids)
 
     def update(self, dt: float):
@@ -147,35 +116,15 @@ class Articulation(AssetBase):
         Args:
             dt: Time step in seconds
         """
-        # Update backend (reads from simulator)
-        self._backend.update(dt)
-        
-        # Copy data from backend to data container
-        self.data.root_pos_w = self._backend.get_root_positions()
-        self.data.root_quat_w = self._backend.get_root_orientations()
-        self.data.root_vel_w = self._backend.get_root_velocities()
-        self.data.root_ang_vel_w = self._backend.get_root_angular_velocities()
-
-        self.data.joint_pos = self._backend.get_joint_positions()
-        self.data.joint_vel = self._backend.get_joint_velocities()
-
-        self.data.body_pos_w = self._backend.get_body_positions()
-        self.data.body_quat_w = self._backend.get_body_orientations()
-        self.data.body_vel_w = self._backend.get_body_velocities()
-        self.data.body_ang_vel_w = self._backend.get_body_angular_velocities()
-
-        self.data.net_contact_forces = self._backend.get_net_contact_forces()
-        
-        # Update timestamp for lazy evaluation
-        self.data.update_timestamp(dt)
+        # Data container handles everything via lazy properties
+        self.data.update(dt)
 
     def write_data_to_sim(self):
         """Write articulation data to simulation.
         
         This writes buffered joint torques to the simulator.
         """
-        if self._backend is not None:
-            self._backend.set_joint_torques(self.data.applied_torques)
+        self._backend.set_joint_torques(self.data.applied_torques)
 
     # ========== Convenience Methods ==========
 

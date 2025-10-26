@@ -18,17 +18,13 @@ class TimestampedBuffer:
             buffer.timestamp = sim_timestamp
         return buffer.data
     """
-    
+
     def __init__(self):
         """Initialize empty buffer."""
         self.data: torch.Tensor = None
         self.timestamp: float = -1.0
-    
+
     def reset(self):
         """Reset buffer."""
         self.data = None
         self.timestamp = -1.0
-
-
-__all__ = ["TimestampedBuffer"]
-
