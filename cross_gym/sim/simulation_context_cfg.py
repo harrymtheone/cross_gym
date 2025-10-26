@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from dataclasses import MISSING
 
-from cross_gym.utils.configclass import configclass
+from cross_gym.sim import SimulationContext
+from cross_gym.utils import configclass
 
 
 @configclass
@@ -14,6 +15,8 @@ class SimulationContextCfg:
     Each simulator has its own config class that inherits from this.
     """
 
+    class_type: type[SimulationContext] = MISSING
+
     # Common parameters across all simulators
     device: str = "cuda:0"
     """Device to run simulation on."""
@@ -21,7 +24,7 @@ class SimulationContextCfg:
     dt: float = 0.01
     """Physics timestep in seconds."""
 
-    gravity: Tuple[float, float, float] = (0.0, 0.0, -9.81)
+    gravity: tuple[float, float, float] = (0.0, 0.0, -9.81)
     """Gravity vector."""
 
     headless: bool = True

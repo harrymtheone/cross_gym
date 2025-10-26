@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import torch
 
-from cross_gym.assets.asset_base import AssetBase
-from .articulation_data import ArticulationData
+from cross_gym.assets import AssetBase
+from . import ArticulationData
 
 if TYPE_CHECKING:
     from . import ArticulationCfg
@@ -38,8 +38,8 @@ class Articulation(AssetBase):
         # Articulation properties
         self.num_dof = 0
         self.num_bodies = 0
-        self.dof_names: List[str] = []
-        self.body_names: List[str] = []
+        self.dof_names: list[str] = []
+        self.body_names: list[str] = []
 
         # Data container
         self.data = ArticulationData()

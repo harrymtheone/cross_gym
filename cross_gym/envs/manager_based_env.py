@@ -57,14 +57,7 @@ class ManagerBasedEnv(VecEnv):
         # Create simulation context using class_type from config
         if SimulationContext.instance() is None:
             # Get the simulator class from the config
-            if not hasattr(self.cfg.sim, 'class_type'):
-                raise ValueError(
-                    f"Simulation config must have 'class_type' attribute. "
-                    f"Use IsaacGymCfg, GenesisCfg, or IsaacSimCfg."
-                )
-
-            sim_class = self.cfg.sim.class_type
-            self.sim: SimulationContext = sim_class(self.cfg.sim)
+            self.sim: SimulationContext = cfg.sim.class_type(cfg.sim)
         else:
             self.sim = SimulationContext.instance()
 

@@ -3,4 +3,3 @@
 from .asset_base import AssetBase, AssetBaseCfg
 
 from .articulation import *
-

@@ -1,16 +1,10 @@
-"""Direct RL cross_gym_tasks.
+"""Direct RL tasks.
 
 Tasks defined using the direct RL workflow (without managers).
-For simpler cross_gym_tasks or when you need more direct control.
+For simpler tasks or when you need more direct control.
 
-Example cross_gym_tasks:
-- Simple cartpole
-- Basic reach task
+Example tasks:
+- Locomotion (simple forward walking)
 """
 
-# Import your cross_gym_tasks here
-# from .cartpole import CartpoleTaskCfg
-
-__all__ = [
-    # Add your task configs here
-]
+from .locomotion_env import LocomotionEnv, LocomotionEnvCfg
