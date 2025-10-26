@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 
-from cross_gym.sim import SimulationContext
 from cross_gym.utils import configclass
+from . import SimulationContext
 
 
 @configclass
