@@ -56,3 +56,32 @@ def quat_conjugate(q: torch.Tensor) -> torch.Tensor:
         Conjugated quaternion (w, -x, -y, -z)
     """
     return torch.cat([q[..., 0:1], -q[..., 1:4]], dim=-1)
+
+
+@torch.jit.script
+def quat_from_euler_xyz(euler: torch.Tensor) -> torch.Tensor:
+    """Convert Euler angles (roll, pitch, yaw) to quaternion.
+    
+    Args:
+        euler: Euler angles in radians (roll, pitch, yaw). Shape: (..., 3)
+        
+    Returns:
+        Quaternion (w, x, y, z). Shape: (..., 4)
+    """
+    roll = euler[..., 0]
+    pitch = euler[..., 1]
+    yaw = euler[..., 2]
+
+    cy = torch.cos(yaw * 0.5)
+    sy = torch.sin(yaw * 0.5)
+    cp = torch.cos(pitch * 0.5)
+    sp = torch.sin(pitch * 0.5)
+    cr = torch.cos(roll * 0.5)
+    sr = torch.sin(roll * 0.5)
+
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+
+    return torch.stack([w, x, y, z], dim=-1)
