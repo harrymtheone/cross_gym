@@ -10,65 +10,122 @@ import torch
 
 @dataclass
 class ActuatorCommand:
-    """Container for actuator commands.
-    
-    Holds the desired positions, velocities, and efforts.
-    Only relevant fields need to be filled.
-    """
-
+    """Actuator command with position, velocity, and effort targets."""
     joint_positions: torch.Tensor | None = None
-    """Target joint positions (num_envs, num_joints)."""
-
     joint_velocities: torch.Tensor | None = None
-    """Target joint velocities (num_envs, num_joints)."""
-
     joint_efforts: torch.Tensor | None = None
-    """Target joint efforts/torques (num_envs, num_joints)."""
 
 
 class ActuatorBase(ABC):
     """Base class for actuator models.
     
-    Actuators convert policy actions to joint torques, modeling:
-    - PD controllers
-    - Motor dynamics
-    - Delays/lags
-    - Saturation limits
+    Actuators convert user commands (pos/vel targets) into torques based on the actuator model.
+    Parameters are resolved by merging URDF values with actuator config values.
     """
 
     def __init__(
             self,
+            cfg,
+            joint_names: list[str],
+            joint_ids: torch.Tensor | slice,
             num_envs: int,
-            num_joints: int,
-            stiffness: torch.Tensor,
-            damping: torch.Tensor,
-            effort_limit: torch.Tensor,
             device: torch.device,
+            stiffness: torch.Tensor | float = 0.0,
+            damping: torch.Tensor | float = 0.0,
+            armature: torch.Tensor | float = 0.0,
+            friction: torch.Tensor | float = 0.0,
+            effort_limit: torch.Tensor | float = torch.inf,
+            velocity_limit: torch.Tensor | float = torch.inf,
     ):
-        """Initialize actuator.
+        """Initialize actuator with config and URDF parameters.
         
         Args:
+            cfg: Actuator configuration
+            joint_names: Names of joints in this actuator group
+            joint_ids: Indices of joints (tensor or slice(None))
             num_envs: Number of environments
-            num_joints: Number of joints controlled by this actuator
-            stiffness: PD stiffness/kp (num_envs, num_joints)
-            damping: PD damping/kd (num_envs, num_joints)
-            effort_limit: Max torque (num_envs, num_joints)
             device: Torch device
+            stiffness: URDF stiffness values
+            damping: URDF damping values
+            armature: URDF armature values
+            friction: URDF friction values
+            effort_limit: URDF effort limit values
+            velocity_limit: URDF velocity limit values
         """
+        self.cfg = cfg
+        self.joint_names = joint_names
+        self.dof_indices = joint_ids
         self.num_envs = num_envs
-        self.num_joints = num_joints
+        self.num_joints = len(joint_names)
         self.device = device
 
-        # PD gains
-        self.stiffness = stiffness
-        self.damping = damping
+        # Parse parameters: merge URDF (default) with config values
+        # Priority: cfg value > URDF value
+        self.stiffness = self._parse_dof_parameter(cfg.stiffness, stiffness)
+        self.damping = self._parse_dof_parameter(cfg.damping, damping)
+        self.armature = self._parse_dof_parameter(cfg.armature, armature)
+        self.friction = self._parse_dof_parameter(cfg.friction, friction)
+        self.effort_limit = self._parse_dof_parameter(cfg.effort_limit, effort_limit)
+        self.velocity_limit = self._parse_dof_parameter(cfg.velocity_limit, velocity_limit)
 
-        # Limits
-        self.effort_limit = effort_limit
+        # Initialize buffers for computed and applied torques
+        self.computed_torque = torch.zeros(num_envs, self.num_joints, device=device)
+        self.applied_torque = torch.zeros(num_envs, self.num_joints, device=device)
 
-        # Torque buffers
-        self.computed_torque = torch.zeros(num_envs, num_joints, device=device)
-        self.applied_torque = torch.zeros(num_envs, num_joints, device=device)
+    def _parse_dof_parameter(
+            self,
+            cfg_value: float | dict[str, float] | None,
+            default_value: torch.Tensor | float,
+    ) -> torch.Tensor:
+        """Parse DOF parameter from config or use default.
+        
+        Resolution priority:
+        1. If cfg_value is specified, use it
+        2. Otherwise, use default_value from URDF
+        
+        Args:
+            cfg_value: Value from actuator config (can be float, dict, or None)
+            default_value: Default value from URDF (float or tensor)
+            
+        Returns:
+            Parsed parameter as tensor with shape (num_envs, num_joints)
+        """
+        param = torch.zeros(self.num_envs, self.num_joints, device=self.device)
+
+        if cfg_value is None:
+            # Use default from URDF
+            if isinstance(default_value, (int, float)):
+                param[:] = float(default_value)
+            elif isinstance(default_value, torch.Tensor):
+                if default_value.shape == (self.num_envs, self.num_joints):
+                    param[:] = default_value
+                else:
+                    raise ValueError(
+                        f"Default tensor shape mismatch: {default_value.shape} vs "
+                        f"expected {(self.num_envs, self.num_joints)}"
+                    )
+            else:
+                raise TypeError(f"Default value must be float or tensor, got {type(default_value)}")
+
+        else:
+            if isinstance(cfg_value, (int, float)):
+                # Single value for all joints
+                param[:] = float(cfg_value)
+            elif isinstance(cfg_value, dict):
+                # Dictionary with joint names as keys
+                for joint_idx, joint_name in enumerate(self.joint_names):
+                    if joint_name in cfg_value:
+                        param[:, joint_idx] = float(cfg_value[joint_name])
+                    else:
+                        # Joint not in config dict, use default
+                        if isinstance(default_value, torch.Tensor):
+                            param[:, joint_idx] = default_value[:, joint_idx]
+                        else:
+                            param[:, joint_idx] = float(default_value)
+            else:
+                raise TypeError(f"Config value must be float or dict, got {type(cfg_value)}")
+
+        return param
 
     @abstractmethod
     def compute(
@@ -77,34 +134,19 @@ class ActuatorBase(ABC):
             joint_pos: torch.Tensor,
             joint_vel: torch.Tensor,
     ) -> ActuatorCommand:
-        """Compute torques from commands and current state.
+        """Compute actuator output from commands.
         
         Args:
-            command: Desired joint commands
-            joint_pos: Current joint positions
-            joint_vel: Current joint velocities
+            command: Target positions, velocities, efforts
+            joint_pos: Current joint positions (num_envs, num_joints)
+            joint_vel: Current joint velocities (num_envs, num_joints)
             
         Returns:
-            Modified command with computed joint_efforts
+            Modified command with computed efforts
         """
         pass
 
     @abstractmethod
     def reset(self, env_ids: torch.Tensor):
-        """Reset actuator state for specified environments.
-        
-        Args:
-            env_ids: Environment IDs to reset
-        """
+        """Reset actuator state for given environments."""
         pass
-
-    def _clip_torque(self, torque: torch.Tensor) -> torch.Tensor:
-        """Clip torque to effort limits.
-        
-        Args:
-            torque: Unclipped torque
-            
-        Returns:
-            Clipped torque
-        """
-        return torch.clip(torque, -self.effort_limit, self.effort_limit)

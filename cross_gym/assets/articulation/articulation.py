@@ -95,7 +95,11 @@ class Articulation(AssetBase):
         self._process_actuators_cfg()
 
     def _process_actuators_cfg(self):
-        """Process actuator configurations and create actuator instances."""
+        """Process actuator configurations and create actuator instances.
+        
+        Loads URDF parameters from backend and passes them to actuators
+        for parameter resolution (config values override URDF values).
+        """
         if len(self.cfg.actuators) == 0:
             return
 
@@ -115,34 +119,54 @@ class Articulation(AssetBase):
                 print(f"[WARNING] Actuator '{actuator_name}' matched no joints")
                 continue
 
-            # Parse gains (can be single value or dict)
-            stiffness = self._parse_dof_parameter(actuator_cfg.stiffness, joint_names)
-            damping = self._parse_dof_parameter(actuator_cfg.damping, joint_names)
-
-            # Parse effort limits
-            if actuator_cfg.effort_limit is not None:
-                # Use default (TODO: get from URDF)
-                effort_limit = torch.full(
-                    (self.num_envs, len(joint_ids)),
-                    100.0,
-                    device=self.device
-                )
+            # Convert to tensor or slice for backend efficiency
+            if len(joint_ids) == self.num_dof:
+                joint_ids_tensor = slice(None)
             else:
-                effort_limit = self._parse_dof_parameter(actuator_cfg.effort_limit, joint_names)
+                joint_ids_tensor = torch.tensor(joint_ids, dtype=torch.long, device=self.device)
 
-            # Create actuator instance
+            # Load URDF parameters for these joints from backend
+            # These are the "defaults" that will be passed to the actuator
+            stiffness_urdf = torch.zeros(
+                self.num_envs, len(joint_ids),
+                device=self.device
+            )  # TODO: Load from backend if available
+            damping_urdf = torch.zeros(
+                self.num_envs, len(joint_ids),
+                device=self.device
+            )  # TODO: Load from backend if available
+            armature_urdf = torch.zeros(
+                self.num_envs, len(joint_ids),
+                device=self.device
+            )  # TODO: Load from backend if available
+            friction_urdf = torch.zeros(
+                self.num_envs, len(joint_ids),
+                device=self.device
+            )  # TODO: Load from backend if available
+            effort_limit_urdf = torch.full(
+                (self.num_envs, len(joint_ids)), torch.inf,
+                device=self.device
+            )  # TODO: Load from backend if available
+            velocity_limit_urdf = torch.full(
+                (self.num_envs, len(joint_ids)), torch.inf,
+                device=self.device
+            )  # TODO: Load from backend if available
+
+            # Create actuator instance with URDF parameters
+            # Actuator will merge config values with URDF defaults
             actuator = actuator_cfg.class_type(
+                cfg=actuator_cfg,
+                joint_names=joint_names,
+                joint_ids=joint_ids_tensor,
                 num_envs=self.num_envs,
-                num_joints=len(joint_ids),
-                stiffness=stiffness,
-                damping=damping,
-                effort_limit=effort_limit,
                 device=self.device,
+                stiffness=stiffness_urdf,
+                damping=damping_urdf,
+                armature=armature_urdf,
+                friction=friction_urdf,
+                effort_limit=effort_limit_urdf,
+                velocity_limit=velocity_limit_urdf,
             )
-
-            # Store DOF indices
-            actuator.dof_indices = torch.tensor(joint_ids, dtype=torch.long, device=self.device)
-            actuator.dof_names = joint_names
 
             # Add to actuators dict
             self.actuators[actuator_name] = actuator
@@ -233,40 +257,6 @@ class Articulation(AssetBase):
             # Update state of the actuator model (for logging/inspection)
             self.data.computed_torque[:, actuator.dof_indices] = actuator.computed_torque
             self.data.applied_torque[:, actuator.dof_indices] = actuator.applied_torque
-
-    def _parse_dof_parameter(
-            self,
-            param: float | dict[str, float],
-            dof_names: list[str],
-    ) -> torch.Tensor:
-        """Parse DOF parameter that can be single value or dict.
-        
-        Args:
-            param: Single value or dict {dof_pattern: value}
-            dof_names: List of DOF names
-            
-        Returns:
-            Parameter tensor (num_envs, num_dofs)
-        """
-        num_dofs = len(dof_names)
-        param_tensor = torch.zeros(self.num_envs, num_dofs, device=self.device)
-
-        if isinstance(param, (int, float)):
-            # Single value for all DOFs
-            param_tensor[:] = param
-
-        elif isinstance(param, dict):
-            # Different values per DOF pattern
-            for i, dof_name in enumerate(dof_names):
-                # Find matching pattern
-                for pattern, value in param.items():
-                    if re.match(pattern, dof_name):
-                        param_tensor[:, i] = value
-                        break
-        else:
-            raise ValueError(f"Invalid parameter type: {type(param)}")
-
-        return param_tensor
 
     # ========== DOF Command Methods ==========
 

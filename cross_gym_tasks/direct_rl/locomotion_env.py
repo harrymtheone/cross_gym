@@ -12,7 +12,7 @@ import torch
 
 from cross_gym.assets import Articulation
 from cross_gym.envs import DirectRLEnv, DirectRLEnvCfg
-from cross_gym.utils import configclass, math as math_utils
+from cross_gym.utils import configclass
 
 if TYPE_CHECKING:
     from . import LocomotionEnvCfg
@@ -46,12 +46,6 @@ class LocomotionEnv(DirectRLEnv):
         return self.scene["robot"]
 
     def _init_buffers(self):
-        """Initialize locomotion-specific buffers."""
-        # Base state in base frame
-        self.base_lin_vel = torch.zeros(self.num_envs, 3, device=self.device)
-        self.base_ang_vel = torch.zeros(self.num_envs, 3, device=self.device)
-        self.projected_gravity = torch.zeros(self.num_envs, 3, device=self.device)
-
         # Actions and torques
         self.actions = torch.zeros(self.num_envs, self.cfg.num_actions, device=self.device)
         self.torques = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)

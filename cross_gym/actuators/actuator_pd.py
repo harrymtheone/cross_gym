@@ -1,27 +1,18 @@
-"""PD actuator models."""
+"""Ideal PD actuator implementation."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import torch
 
-from . import ActuatorCommand, ActuatorBase
-
-if TYPE_CHECKING:
-    from . import IdealPDActuatorCfg
+from . import ActuatorBase, ActuatorCommand
 
 
 class IdealPDActuator(ActuatorBase):
-    """Ideal PD actuator model.
+    """Ideal PD actuator that computes torques from position/velocity errors.
     
-    Computes torques using a simple PD control law:
-        torque = kp * (target_pos - current_pos) + kd * (target_vel - current_vel) + feedforward_torque
-    
-    Then clips to effort limits.
+    The actuator computes torques as:
+        tau = kp * (q_target - q) + kd * (dq_target - dq) + tau_ff
     """
-
-    cfg: IdealPDActuatorCfg
 
     def compute(
             self,
@@ -29,48 +20,47 @@ class IdealPDActuator(ActuatorBase):
             joint_pos: torch.Tensor,
             joint_vel: torch.Tensor,
     ) -> ActuatorCommand:
-        """Compute torques using PD control.
+        """Compute PD torques from command and state.
         
         Args:
-            command: Desired joint commands
-            joint_pos: Current joint positions
-            joint_vel: Current joint velocities
+            command: Target positions, velocities, efforts (feedforward)
+            joint_pos: Current joint positions (num_envs, num_joints)
+            joint_vel: Current joint velocities (num_envs, num_joints)
             
         Returns:
-            Modified command with computed joint_efforts
+            Modified command with joint_efforts set to computed torques
         """
-        # Initialize torque
+        # Initialize computed torque
         self.computed_torque.zero_()
 
-        # Position error (if target position provided)
+        # PD control: tau = kp * (q_target - q) + kd * (dq_target - dq)
         if command.joint_positions is not None:
-            error_pos = command.joint_positions - joint_pos
-            self.computed_torque += self.stiffness * error_pos
+            pos_error = command.joint_positions - joint_pos
+            self.computed_torque.add_(self.stiffness * pos_error)
 
-        # Velocity error (if target velocity provided)
         if command.joint_velocities is not None:
-            error_vel = command.joint_velocities - joint_vel
-            self.computed_torque += self.damping * error_vel
+            vel_error = command.joint_velocities - joint_vel
+            self.computed_torque.add_(self.damping * vel_error)
 
-        # Feedforward torque (if provided)
+        # Add feedforward effort if provided
         if command.joint_efforts is not None:
-            self.computed_torque += command.joint_efforts
+            self.computed_torque.add_(command.joint_efforts)
 
-        # Clip torques
-        self.applied_torque = self._clip_torque(self.computed_torque)
+        # Clip to effort limits
+        torch.clamp(
+            self.computed_torque,
+            -self.effort_limit,
+            self.effort_limit,
+            out=self.applied_torque
+        )
 
-        # Set computed torques into command
-        command.joint_efforts = self.applied_torque
-        # Clear position/velocity targets (we've converted to torque)
-        command.joint_positions = None
-        command.joint_velocities = None
-
+        # Return command with computed efforts
+        command.joint_efforts.copy_(self.applied_torque)
+        command.joint_positions = None  # Clear pos target
+        command.joint_velocities = None  # Clear vel target
+        
         return command
 
     def reset(self, env_ids: torch.Tensor):
-        """Reset actuator (no state to reset for ideal PD).
-        
-        Args:
-            env_ids: Environment IDs to reset
-        """
+        """Reset actuator state (no internal state for ideal PD)."""
         pass
