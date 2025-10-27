@@ -11,9 +11,11 @@ import trimesh
 
 from . import SubTerrain
 from .utils import trimesh_to_height_map_cuda, edge_detection, create_rectangle
+from cross_gym.scene import MeshRegistry
 
 if TYPE_CHECKING:
     from . import TerrainGeneratorCfg
+
 
 
 class TerrainGenerator:
@@ -57,6 +59,15 @@ class TerrainGenerator:
         self._compute_height_map()
         self._compute_terrain_types()
 
+        # Register mesh with singleton registry
+        mesh_registry = MeshRegistry.instance()
+        
+        if mesh_registry is None:
+            raise RuntimeError("Mesh registry not found. Have you created an InteractiveScene?")
+        
+        mesh_registry.register_mesh("terrain", self._global_trimesh)
+        print(f"[TerrainGenerator] Registered mesh 'terrain' in mesh registry")
+
     @property
     def num_rows(self) -> int:
         """Number of terrain rows."""
@@ -71,6 +82,11 @@ class TerrainGenerator:
     def num_terrains(self) -> int:
         """Total number of sub-terrains."""
         return self.num_rows * self.num_cols
+
+    @property
+    def mesh(self) -> trimesh.Trimesh:
+        """Global terrain mesh."""
+        return self._global_trimesh
 
     @property
     def vertices(self) -> np.ndarray:

@@ -98,7 +98,7 @@ class InteractiveScene:
                 if self.terrain is not None:
                     raise RuntimeError(f"Multiple terrain configurations found: {name}")
 
-                self.terrain = cfg.class_type(cfg, mesh_registry=self.mesh_registry)
+                self.terrain = cfg.class_type(cfg)
                 print(f"[Scene] Created terrain: {name}")
 
         # Create articulations
@@ -124,8 +124,6 @@ class InteractiveScene:
             self.sensors[name] = cfg.class_type(
                 cfg,
                 articulation=parent_articulation,
-                sim=self.sim,
-                mesh_registry=self.mesh_registry
             )
 
             print(f"[Scene] Created sensor: {name} (attached to {cfg.articulation_name}/{cfg.body_name})")

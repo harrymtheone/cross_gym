@@ -27,27 +27,31 @@ class SensorBase(ABC):
     - data property: Return sensor data (calls _update_outdated_buffers())
     """
 
+    cfg: SensorBaseCfg
+    _data: SensorBaseData = None
+
     def __init__(
             self,
             cfg: SensorBaseCfg,
             articulation: Articulation,
-            sim: SimulationContext,
+            **kwargs,
     ):
         """Initialize sensor base.
         
         Args:
             cfg: Sensor configuration
             articulation: Articulation to attach sensor to
-            sim: Simulation context
+            **kwargs: Additional arguments (e.g., mesh_registry for RayCaster)
         """
         # Validate configuration
         cfg.validate()  # noqa
-
         self.cfg = cfg
         self._articulation = articulation
-        self.sim = sim
+        self.sim = SimulationContext.instance()
 
         # Initialize sensor data container
+        if self._data is None:
+            raise RuntimeError("self._data must be initialized")
         self._init_data()
 
         # Create sensor buffer for history/delay management
@@ -207,8 +211,6 @@ class SensorBase(ABC):
                 self._data.lin_acc_b = torch.zeros(self.num_envs, 3, device=self.device)
                 self._data.ang_vel_b = torch.zeros(self.num_envs, 3, device=self.device)
         """
-        self._data = SensorBaseData()
-
         # Find and store body index
         self._data.body_idx = self._find_body_index(self.cfg.body_name)
 

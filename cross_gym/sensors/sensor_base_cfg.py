@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import MISSING
 
 from cross_gym.utils import configclass
+from . import SensorBase
 
 
 @configclass
@@ -15,12 +16,15 @@ class SensorBaseCfg:
     history buffering, randomization, and visualization.
     """
 
-    class_type: type = MISSING
+    class_type: type[SensorBase] = MISSING
     """Sensor class to instantiate (must inherit from SensorBase)."""
 
     # ========== Attachment ==========
+    articulation_name: str = MISSING
+    """Name of the articulation asset in the scene to attach sensor to."""
+    
     body_name: str = MISSING
-    """Name of the body/link to attach sensor to."""
+    """Name of the body/link on the articulation to attach sensor to."""
 
     # ========== Transform ==========
     offset: tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -93,6 +97,3 @@ class SensorBaseCfg:
     # ========== Visualization ==========
     debug_vis: bool = False
     """Enable debug visualization."""
-
-
-__all__ = ["SensorBaseCfg"]

@@ -34,12 +34,6 @@ class RayCasterData(SensorBaseData):
     Position where ray intersected geometry. If no hit, position is at max_distance.
     """
 
-    hit_normals_w: torch.Tensor = None
-    """Surface normals at hit points in world frame. Shape: (num_envs, num_rays, 3).
-    
-    Normal vector of intersected surface. If no hit, normal is zero.
-    """
-
     hit_mask: torch.Tensor = None
     """Hit mask indicating valid hits. Shape: (num_envs, num_rays).
     

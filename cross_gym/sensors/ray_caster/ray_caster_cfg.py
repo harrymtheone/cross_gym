@@ -6,6 +6,7 @@ from dataclasses import MISSING
 
 from cross_gym.sensors import SensorBaseCfg
 from cross_gym.utils import configclass
+from . import RayCaster
 from .patterns import RayPatternCfg
 
 
@@ -17,7 +18,6 @@ class RayCasterCfg(SensorBaseCfg):
     to obstacles/terrain in the environment.
     """
 
-    from .ray_caster import RayCaster
     class_type: type = RayCaster
 
     # ========== Ray Pattern ==========
@@ -25,27 +25,34 @@ class RayCasterCfg(SensorBaseCfg):
     """Ray pattern configuration (grid, lidar, circle, etc.)."""
 
     # ========== Range ==========
-    max_distance: float = 10.0
-    """Maximum ray distance in meters."""
-
     min_distance: float = 0.0
     """Minimum ray distance in meters (for filtering close hits)."""
 
+    max_distance: float = 10.0
+    """Maximum ray distance in meters."""
+
     # ========== Mesh Configuration ==========
     mesh_prim_paths: list[str] | None = None
-    """List of mesh prim paths to raycast against.
+    """List of mesh prim paths to raycast against (deprecated, use mesh_names).
     
     If None, raycasts against all meshes in scene.
     Example: ["/World/ground", "/World/obstacles"]
+    
+    .. deprecated::
+        Use mesh_names instead for registry-based mesh access.
+    """
+    
+    mesh_names: list[str] = ["terrain"]
+    """Names of meshes to raycast against in the mesh registry.
+    
+    These correspond to names registered by terrain or other objects.
+    Default is ["terrain"] to raycast against the main terrain mesh.
+    Example: ["terrain", "obstacles"]
     """
 
     # ========== Output Options ==========
-    return_normals: bool = False
-    """Whether to compute and return surface normals at hit points."""
-
     return_hit_points: bool = True
     """Whether to compute and return hit point positions."""
 
 
 __all__ = ["RayCasterCfg"]
-

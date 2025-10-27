@@ -46,10 +46,13 @@ class MeshEntry:
 class MeshRegistry:
     """Registry for managing meshes shared between terrain and sensors.
     
-    This allows terrain to register trimeshes and sensors to query them
+    Singleton that allows terrain to register trimeshes and sensors to query them
     without tight coupling. Handles conversion to Warp meshes with caching.
     
     Example:
+        >>> # Get singleton instance
+        >>> mesh_registry = MeshRegistry.instance()
+        
         >>> # In terrain
         >>> mesh_registry.register_mesh("terrain", trimesh_object)
         
@@ -58,14 +61,40 @@ class MeshRegistry:
         >>> raycast_mesh(rays, mesh=warp_mesh)
     """
 
+    # Class-level instance for singleton pattern
+    _instance = None
+
     def __init__(self, device: torch.device):
         """Initialize mesh registry.
         
         Args:
             device: PyTorch device for tensor operations
         """
+        # Set as singleton instance
+        if MeshRegistry._instance is not None:
+            raise RuntimeError(
+                "Only one MeshRegistry instance can exist at a time. "
+                "Call MeshRegistry.clear_instance() first or use MeshRegistry.instance()."
+            )
+        MeshRegistry._instance = self
+
         self.device = device
         self._meshes: dict[str, MeshEntry] = {}
+
+    @classmethod
+    def instance(cls) -> MeshRegistry | None:
+        """Get the singleton instance of MeshRegistry.
+        
+        Returns:
+            The current MeshRegistry instance, or None if not created.
+        """
+        return cls._instance
+
+    @classmethod
+    def clear_instance(cls):
+        """Clear the singleton instance."""
+        if cls._instance is not None:
+            cls._instance = None
 
     def register_mesh(self, name: str, mesh: trimesh.Trimesh) -> None:
         """Register a mesh in the registry.
