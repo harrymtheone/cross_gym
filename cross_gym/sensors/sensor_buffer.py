@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Sequence
 
 import torch
 
+from cross_gym.utils.math import torch_rand_float
+
 if TYPE_CHECKING:
     from .sensor_base import SensorBase
 
@@ -34,22 +36,25 @@ class SensorBuffer:
         self._device = sensor.device
         self._sim = sensor.sim
 
-        # Delay configuration
-        self._delay_range = self._cfg.delay_range
-
         # Per-environment delays (sampled once, stays fixed)
-        if self._delay_range is not None:
-            min_delay, max_delay = self._delay_range
-            self._env_delays = (
-                    torch.rand(self._num_envs, device=self._device)
-                    * (max_delay - min_delay)
-                    + min_delay
+        if self._cfg.delay_range is None:
+            self._env_delays = None
+            self._buffer_size = 0
+            self._timestamps = None
+            self._data_buffer = None
+            self._buffer_idx = 0
+        else:
+            min_delay, max_delay = self._cfg.delay_range
+            self._env_delays = torch_rand_float(
+                min_delay, max_delay, (self._num_envs,), self._device
             )
 
             # Calculate buffer size based on max delay and update period
-            max_delay_val = max_delay
-            update_rate = sensor.cfg.update_period if sensor.cfg.update_period > 0 else sensor.sim.dt
-            self._buffer_size = max(10, int(max_delay_val / update_rate) + 5)
+            if sensor.cfg.update_period > 0:
+                update_rate = sensor.cfg.update_period
+            else:
+                update_rate = sensor.sim.dt
+            self._buffer_size = max(10, int(max_delay / update_rate) + 5)
 
             # Tensor-based circular buffer for delay simulation
             self._timestamps = torch.full(
@@ -60,12 +65,6 @@ class SensorBuffer:
             )
             self._data_buffer = None  # Initialized on first append (need data shape)
             self._buffer_idx = 0  # Circular buffer pointer
-        else:
-            self._env_delays = None
-            self._buffer_size = 0
-            self._timestamps = None
-            self._data_buffer = None
-            self._buffer_idx = 0
 
         # Current measurement (no delay)
         self._measurement: torch.Tensor | None = None

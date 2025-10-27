@@ -17,25 +17,27 @@ wp.init()
 def raycast_mesh(
         ray_starts: torch.Tensor,
         ray_directions: torch.Tensor,
-        mesh: 'wp.Mesh',
+        mesh: wp.Mesh,
         max_dist: float = 1e6,
-        return_distance: bool = True,
-) -> tuple[torch.Tensor, torch.Tensor | None]:
+        return_hit_points: bool = False,
+) -> tuple[torch.Tensor | None, torch.Tensor]:
     """Perform GPU raycasting using Warp.
     
     This is a wrapper around Warp's mesh raycasting that handles PyTorch tensors.
+    Always returns distances. Optionally returns hit positions.
     
     Args:
         ray_starts: Ray origins. Shape: (num_envs, num_rays, 3) or (N, 3)
         ray_directions: Ray directions (should be normalized). Shape: (num_envs, num_rays, 3) or (N, 3)
         mesh: Warp mesh to raycast against
         max_dist: Maximum ray distance
-        return_distance: Whether to return distances
+        return_hit_points: Whether to compute and return hit positions
         
     Returns:
         ray_hits: Hit positions. Shape same as input. Contains inf for misses.
-        distances: Distances to hits. Shape: (..., num_rays). Contains inf for misses. 
-                   None if return_distance=False.
+                  None if return_hit_points=False.
+        distances: Distances to hits. Shape: (..., num_rays). Contains inf for misses.
+                   Always returned.
                  
     Raises:
         ImportError: If Warp is not available
@@ -53,97 +55,122 @@ def raycast_mesh(
     num_rays = ray_starts_flat.shape[0]
 
     # Create output tensors
-    ray_hits = torch.full((num_rays, 3), float('inf'), device=mesh_device, dtype=torch.float32)
-
-    if return_distance:
-        ray_distances = torch.full((num_rays,), float('inf'), device=mesh_device, dtype=torch.float32)
+    ray_distances = torch.full((num_rays,), float('inf'), device=mesh_device, dtype=torch.float32)
+    
+    if return_hit_points:
+        # Use kernel that computes both distances and hit points
+        ray_hits = torch.full((num_rays, 3), float('inf'), device=mesh_device, dtype=torch.float32)
+        
+        wp.launch(
+            kernel=_raycast_kernel_with_hit_points,
+            dim=num_rays,
+            inputs=[
+                mesh.id,
+                ray_starts_flat,
+                ray_directions_flat,
+                ray_hits,
+                ray_distances,
+                float(max_dist),
+            ],
+            device=mesh.device,
+        )
     else:
-        ray_distances = None
-
-    # Convert to Warp arrays
-    ray_starts_wp = wp.from_torch(ray_starts_flat, dtype=wp.vec3)
-    ray_directions_wp = wp.from_torch(ray_directions_flat, dtype=wp.vec3)
-    ray_hits_wp = wp.from_torch(ray_hits, dtype=wp.vec3)
-
-    if return_distance:
-        ray_distances_wp = wp.from_torch(ray_distances, dtype=wp.float32)
-    else:
-        ray_distances_wp = wp.empty(1, dtype=wp.float32, device=mesh.device)
-
-    # Launch raycasting kernel
-    wp.launch(
-        kernel=_raycast_kernel,
-        dim=num_rays,
-        inputs=[
-            mesh.id,
-            ray_starts_wp,
-            ray_directions_wp,
-            ray_hits_wp,
-            ray_distances_wp,
-            float(max_dist),
-            int(return_distance),
-        ],
-        device=mesh.device,
-    )
+        # Use optimized kernel that only computes distances
+        ray_hits = None
+        
+        wp.launch(
+            kernel=_raycast_kernel_distance_only,
+            dim=num_rays,
+            inputs=[
+                mesh.id,
+                ray_starts_flat,
+                ray_directions_flat,
+                ray_distances,
+                float(max_dist),
+            ],
+            device=mesh.device,
+        )
 
     # Synchronize to ensure kernel completion
     wp.synchronize()
 
-    # Reshape back to original shape
-    ray_hits = ray_hits.to(device).reshape(original_shape)
+    # Reshape distances back to original shape (always returned)
+    ray_distances = ray_distances.to(device).reshape(original_shape[:-1])
 
-    if return_distance:
-        ray_distances = ray_distances.to(device).reshape(original_shape[:-1])
+    # Reshape hit points if computed
+    if return_hit_points:
+        ray_hits = ray_hits.to(device).reshape(original_shape)
 
     return ray_hits, ray_distances
 
 
 @wp.kernel(enable_backward=False)
-def _raycast_kernel(
-        mesh: wp.uint64,
+def _raycast_kernel_distance_only(
+        mesh_id: wp.uint64,
+        ray_starts: wp.array1d(dtype=wp.vec3),
+        ray_directions: wp.array1d(dtype=wp.vec3),
+        ray_distances: wp.array1d(dtype=wp.float32),
+        max_dist: float,
+):
+    """Optimized Warp kernel for raycasting - distance only.
+    
+    This kernel only computes distances, avoiding unnecessary computation
+    of hit positions when they're not needed.
+    
+    Args:
+        mesh_id: Warp mesh ID
+        ray_starts: Ray starting positions
+        ray_directions: Ray directions (should be normalized)
+        ray_distances: Output distances (inf for misses)
+        max_dist: Maximum ray distance
+    """
+    tid = wp.tid()
+
+    # Perform raycast query
+    query = wp.mesh_query_ray(
+        mesh_id,
+        ray_starts[tid],
+        ray_directions[tid],
+        max_dist
+    )
+
+    # Store distance if hit (otherwise remains inf)
+    if query.result:
+        ray_distances[tid] = query.t
+
+
+@wp.kernel(enable_backward=False)
+def _raycast_kernel_with_hit_points(
+        mesh_id: wp.uint64,
         ray_starts: wp.array1d(dtype=wp.vec3),
         ray_directions: wp.array1d(dtype=wp.vec3),
         ray_hits: wp.array1d(dtype=wp.vec3),
         ray_distances: wp.array1d(dtype=wp.float32),
         max_dist: float,
-        return_distance: int,
 ):
-    """Warp kernel for raycasting against a mesh.
+    """Warp kernel for raycasting - distances and hit points.
+    
+    This kernel computes both distances and hit point positions.
     
     Args:
-        mesh: Warp mesh ID
+        mesh_id: Warp mesh ID
         ray_starts: Ray starting positions
-        ray_directions: Ray directions
+        ray_directions: Ray directions (should be normalized)
         ray_hits: Output hit positions (inf for misses)
         ray_distances: Output distances (inf for misses)
         max_dist: Maximum ray distance
-        return_distance: Whether to compute distances
     """
     tid = wp.tid()
 
-    # Output parameters for mesh_query_ray
-    t = float(0.0)  # hit distance along ray
-    u = float(0.0)  # hit face barycentric u
-    v = float(0.0)  # hit face barycentric v
-    sign = float(0.0)  # hit face sign
-    n = wp.vec3()  # hit face normal
-    f = int(0)  # hit face index
-
     # Perform raycast query
-    hit_success = wp.mesh_query_ray(
-        mesh,
+    query = wp.mesh_query_ray(
+        mesh_id,
         ray_starts[tid],
         ray_directions[tid],
-        max_dist,
-        t, u, v, sign, n, f
+        max_dist
     )
 
-    # Check if hit
-    if hit_success:
-        # Hit! Compute hit position
-        ray_hits[tid] = ray_starts[tid] + t * ray_directions[tid]
-
-        # Optionally compute distance
-        if return_distance == 1:
-            ray_distances[tid] = t
-    # If miss, outputs are already initialized to inf
+    # Store results if hit (otherwise remains inf)
+    if query.result:
+        ray_distances[tid] = query.t
+        ray_hits[tid] = ray_starts[tid] + query.t * ray_directions[tid]

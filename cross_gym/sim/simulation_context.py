@@ -28,7 +28,7 @@ class SimulationContext(ABC):
     """
 
     # Class-level instance for singleton pattern
-    _instance = None
+    _instance: SimulationContext = None
 
     def __init__(self, cfg: SimulationContextCfg):
         """Initialize the simulation context.
@@ -61,7 +61,7 @@ class SimulationContext(ABC):
         self._sim_step_counter = 0
 
     @classmethod
-    def instance(cls):
+    def instance(cls) -> SimulationContext:
         """Get the singleton instance of SimulationContext.
         
         Returns:

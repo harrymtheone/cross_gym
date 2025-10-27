@@ -158,45 +158,57 @@ class RayCaster(SensorBase):
         Args:
             env_ids: Indices of environments to update
         """
-        # Transform ray directions to world frame (vectorized)
-        # Expand local directions to all environments: (num_envs, num_rays, 3)
+        # Resolve env_ids
+        if env_ids is None:
+            env_ids = slice(None)
+            num_update_envs = self.num_envs
+        else:
+            num_update_envs = len(env_ids)
+        
+        # Transform ray directions to world frame (only for specified environments)
+        # Expand local directions to specified environments: (num_update_envs, num_rays, 3)
         ray_dirs = self._ray_directions_local.unsqueeze(0).expand(
-            self.num_envs, self._num_rays, 3
+            num_update_envs, self._num_rays, 3
         )
 
-        # Expand quaternions for each ray: (num_envs, num_rays, 4)
-        quat = self._data.quat_w.unsqueeze(1).expand(
-            self.num_envs, self._num_rays, 4
+        # Expand quaternions for each ray: (num_update_envs, num_rays, 4)
+        quat = self._data.quat_w[env_ids].unsqueeze(1).expand(
+            num_update_envs, self._num_rays, 4
         )
 
-        # Reshape to (num_envs * num_rays, 3) and (num_envs * num_rays, 4)
+        # Reshape to (num_update_envs * num_rays, 3) and (num_update_envs * num_rays, 4)
         ray_dirs_flat = ray_dirs.reshape(-1, 3)
         quat_flat = quat.reshape(-1, 4)
 
         # Rotate and reshape back
         rotated = math_utils.quat_rotate(quat_flat, ray_dirs_flat)
-        self._data.ray_directions_w[:] = rotated.reshape(self.num_envs, self._num_rays, 3)
+        self._data.ray_directions_w[env_ids] = rotated.reshape(num_update_envs, self._num_rays, 3)
 
-        # Perform raycasting
-        # TODO: Optimize to only raycast specified env_ids
-        self._raycast()
+        # Perform raycasting (only for specified environments)
+        self._raycast(env_ids)
 
         # Store distances in buffer for delay/history tracking
         self._buffer.append(self.sim.time, self._data.distances)
 
-    def _raycast(self):
-        """Perform raycasting for all environments using Warp."""
+    def _raycast(self, env_ids: Sequence[int] | None = None):
+        """Perform raycasting for specified environments using Warp.
+        
+        Args:
+            env_ids: Indices of environments to raycast. If None, raycast all.
+        """
+        # Resolve env_ids
+        if env_ids is None:
+            env_ids = slice(None)
+        
         # Get mesh from registry (handles caching and version checking internally)
         mesh_name = self.cfg.mesh_names[0]
         mesh = self.mesh_registry.get_warp_mesh(mesh_name)
 
-        # Expand ray origins for all rays
-        # Shape: (num_envs, num_rays, 3)
-        ray_origins = self._data.pos_w.unsqueeze(1).expand(-1, self._num_rays, -1)
+        # Shape: (num_update_envs, num_rays, 3)
+        ray_origins = self._data.pos_w[env_ids].unsqueeze(1).expand(-1, self._num_rays, -1)
 
-        # Ray directions already in world frame
-        # Shape: (num_envs, num_rays, 3)
-        ray_directions = self._data.ray_directions_w
+        # Shape: (num_update_envs, num_rays, 3)
+        ray_directions = self._data.ray_directions_w[env_ids]
 
         # Perform raycasting
         ray_hits, distances = raycast_mesh(
@@ -204,25 +216,25 @@ class RayCaster(SensorBase):
             ray_directions,
             mesh=mesh,
             max_dist=self.cfg.max_distance,
-            return_distance=True,
+            return_hit_points=self.cfg.return_hit_points,
         )
 
         # Check valid hits (finite distances)
         valid_hits = torch.isfinite(distances) & (distances >= self.cfg.min_distance)
 
-        # Update distances
-        self._data.distances[:] = torch.where(
+        # Update distances (only for specified environments)
+        self._data.distances[env_ids] = torch.where(
             valid_hits,
             torch.clamp(distances, max=self.cfg.max_distance),
             torch.tensor(self.cfg.max_distance, device=self.device)
         )
 
-        # Update hit mask
-        self._data.hit_mask[:] = valid_hits
+        # Update hit mask (only for specified environments)
+        self._data.hit_mask[env_ids] = valid_hits
 
-        # Update hit points if requested
+        # Update hit points if they were computed
         if self.cfg.return_hit_points:
-            self._data.hit_points_w[:] = torch.where(
+            self._data.hit_points_w[env_ids] = torch.where(
                 valid_hits.unsqueeze(-1),
                 ray_hits,
                 ray_origins + ray_directions * self.cfg.max_distance

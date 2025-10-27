@@ -168,8 +168,8 @@ class SensorBase(ABC):
 
         outdated_env_ids = self._is_outdated.nonzero(as_tuple=False).squeeze(-1)
 
-        # Update sensor pose in world frame
-        self._update_sensor_pose()
+        # Update sensor pose in world frame (only for outdated environments)
+        self._update_sensor_pose(outdated_env_ids)
 
         # Call subclass-specific update (only for outdated environments)
         # Note: Subclass should call self._buffer.append() if using delay/history
@@ -319,19 +319,28 @@ class SensorBase(ABC):
 
         self._data.offset_quat_sim[env_ids] = math_utils.quat_from_euler_xyz(euler)
 
-    def _update_sensor_pose(self):
+    def _update_sensor_pose(self, env_ids: Sequence[int] | None = None):
         """Update sensor pose in world frame based on body pose.
         
         Uses the body_idx and offset transforms from self._data to compute
         the sensor pose in world frame.
+        
+        Args:
+            env_ids: Environment indices to update. If None, update all environments.
         """
+        # Resolve env_ids
+        if env_ids is None:
+            env_ids = slice(None)
+
         # Get body pose in world frame
-        body_pos_w = self._articulation.data.body_pos_w[:, self._data.body_idx]
-        body_quat_w = self._articulation.data.body_quat_w[:, self._data.body_idx]
+        body_pos_w = self._articulation.data.body_pos_w[env_ids, self._data.body_idx]
+        body_quat_w = self._articulation.data.body_quat_w[env_ids, self._data.body_idx]
 
         # Transform sensor offset to world frame
-        self._data.pos_w[:] = math_utils.quat_rotate(body_quat_w, self._data.offset_pos_sim) + body_pos_w
-        self._data.quat_w[:] = math_utils.quat_mul(body_quat_w, self._data.offset_quat_sim)
+        self._data.pos_w[env_ids] = body_pos_w + math_utils.quat_rotate(
+            body_quat_w, self._data.offset_pos_sim[env_ids]
+        )
+        self._data.quat_w[env_ids] = math_utils.quat_mul(body_quat_w, self._data.offset_quat_sim[env_ids])
 
     def _has_randomization(self) -> bool:
         """Check if any randomization is configured.
