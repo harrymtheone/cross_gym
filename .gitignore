@@ -1,7 +1,5 @@
 /.idea/
-/direct
-/manager_based
-/isaaclab
+/reference/
 
 /docs/GETTING_STARTED.md
 /docs/IMPLEMENTATION_STATUS.md

@@ -38,11 +38,53 @@ class SensorBaseCfg:
     """Number of past measurements to store. 0 means only current data."""
 
     # ========== Randomization ==========
-    offset_range: tuple[tuple[float, float], tuple[float, float], tuple[float, float]] | None = None
-    """Randomize offset per environment. Format: ((x_min, x_max), (y_min, y_max), (z_min, z_max))."""
+    @configclass
+    class OffsetCfg:
+        """Position offset randomization ranges per axis."""
+        x: tuple[float, float] | None = None
+        """X-axis offset range (min, max) in meters. None means no randomization."""
+        y: tuple[float, float] | None = None
+        """Y-axis offset range (min, max) in meters. None means no randomization."""
+        z: tuple[float, float] | None = None
+        """Z-axis offset range (min, max) in meters. None means no randomization."""
 
-    rotation_range: tuple[tuple[float, float], tuple[float, float], tuple[float, float]] | None = None
-    """Randomize rotation per environment. Format: ((r_min, r_max), (p_min, p_max), (y_min, y_max))."""
+    offset_range: OffsetCfg = OffsetCfg()
+    """Randomize position offset per environment.
+    
+    Each environment gets a random offset sampled from the specified ranges.
+    Leave axis as None to disable randomization for that axis.
+    
+    Example:
+        offset_range = OffsetCfg(
+            x=(-0.02, 0.02),  # Random offset ±2cm in x
+            y=(-0.01, 0.01),  # Random offset ±1cm in y
+            z=None,           # No randomization in z
+        )
+    """
+
+    @configclass
+    class RotationCfg:
+        """Rotation randomization ranges per axis."""
+        roll: tuple[float, float] | None = None
+        """Roll angle range (min, max) in degrees. None means no randomization."""
+        pitch: tuple[float, float] | None = None
+        """Pitch angle range (min, max) in degrees. None means no randomization."""
+        yaw: tuple[float, float] | None = None
+        """Yaw angle range (min, max) in degrees. None means no randomization."""
+
+    rotation_range: RotationCfg = RotationCfg()
+    """Randomize rotation offset per environment.
+    
+    Each environment gets a random rotation sampled from the specified ranges.
+    Leave axis as None to disable randomization for that axis.
+    
+    Example:
+        rotation_range = RotationCfg(
+            roll=(-5.0, 5.0),   # Random roll ±5 degrees
+            pitch=(-3.0, 3.0),  # Random pitch ±3 degrees
+            yaw=None,           # No randomization in yaw
+        )
+    """
 
     # ========== Delay & Noise ==========
     delay_range: tuple[float, float] | None = None
@@ -54,4 +96,3 @@ class SensorBaseCfg:
 
 
 __all__ = ["SensorBaseCfg"]
-

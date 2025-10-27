@@ -165,7 +165,10 @@ class InteractiveScene:
             articulation.reset(env_ids)
 
         # TODO: Reset rigid objects
-        # TODO: Reset sensors
+        
+        # Reset sensors
+        for sensor in self.sensors.values():
+            sensor.reset(env_ids)
 
     def update(self, dt: float):
         """Update all assets in the scene.
@@ -181,10 +184,11 @@ class InteractiveScene:
 
         # TODO: Update rigid objects
 
-        # Update sensors (if not lazy)
-        if not self.cfg.lazy_sensor_update:
-            for sensor in self.sensors.values():
-                sensor.update(dt)
+        # Update sensors
+        # In lazy mode: sensors only compute when data is accessed
+        # In eager mode: all sensors compute every step
+        for sensor in self.sensors.values():
+            sensor.update(dt, force_recompute=not self.cfg.lazy_sensor_update)
 
     def write_data_to_sim(self):
         """Write data from all assets to the simulation.

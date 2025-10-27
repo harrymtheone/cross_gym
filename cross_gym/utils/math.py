@@ -1,6 +1,14 @@
 """Math utility functions."""
+from __future__ import annotations
+
+from typing import Sequence
 
 import torch
+
+
+@torch.jit.script
+def torch_rand_float(lower: float, upper: float, shape: Sequence[int] | int, device: torch.device):
+    return lower + (upper - lower) * torch.rand(shape, device=device)
 
 
 @torch.jit.script

@@ -6,20 +6,16 @@ from dataclasses import dataclass
 
 import torch
 
+from cross_gym.sensors import SensorBaseData
+
 
 @dataclass
-class RayCasterData:
+class RayCasterData(SensorBaseData):
     """Data container for ray caster sensor.
     
+    Inherits sensor pose (pos_w, quat_w) from SensorBaseData.
     All tensors have shape (num_envs, num_rays) unless otherwise noted.
     """
-
-    # ========== Sensor Pose ==========
-    pos_w: torch.Tensor = None
-    """Sensor position in world frame. Shape: (num_envs, 3)."""
-
-    quat_w: torch.Tensor = None
-    """Sensor orientation in world frame (w, x, y, z). Shape: (num_envs, 4)."""
 
     # ========== Ray Directions ==========
     ray_directions_w: torch.Tensor = None
