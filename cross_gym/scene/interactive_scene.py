@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-import inspect
 from typing import Any, TYPE_CHECKING
 
 import torch
 
-from cross_gym.assets import AssetBase, Articulation
+from cross_gym.assets import AssetBase, Articulation, ArticulationCfg
+from cross_gym.sensors import SensorBaseCfg
 from cross_gym.sim import SimulationContext
+from cross_gym.terrains import TerrainGeneratorCfg
+from . import MeshRegistry
 
 if TYPE_CHECKING:
-    from .interactive_scene_cfg import InteractiveSceneCfg
+    from . import InteractiveSceneCfg
 
 
 class InteractiveScene:
@@ -68,10 +70,12 @@ class InteractiveScene:
 
         # Environment info
         self.num_envs = cfg.num_envs
-        self.env_spacing = cfg.env_spacing
+
+        # Create mesh registry for sharing meshes between terrain and sensors
+        self.mesh_registry = MeshRegistry(device=self.sim.device)
 
         # Parse configuration and create assets
-        self._parse_config()
+        self._parse_cfg()
 
         # Clone environments (if more than one)
         if self.num_envs > 1:
@@ -80,53 +84,51 @@ class InteractiveScene:
         # Initialize all assets
         self._initialize_assets()
 
-    def _parse_config(self):
-        """Parse the configuration and create assets."""
-        # Get all attributes from config that are not built-in
-        for attr_name in dir(self.cfg):
-            # Skip private attributes and methods
-            if attr_name.startswith("_"):
-                continue
-
-            # Skip built-in attributes
-            if attr_name in ["num_envs", "env_spacing", "lazy_sensor_update", "replicate_physics"]:
-                continue
-
-            attr_value = getattr(self.cfg, attr_name)
-
-            # Skip methods and other non-config items
-            if callable(attr_value) or inspect.ismethod(attr_value):
-                continue
-
-            # Check if this is an asset configuration
-            if hasattr(attr_value, "class_type"):
-                self._create_asset(attr_name, attr_value)
-
-    def _create_asset(self, name: str, cfg: Any):
-        """Create an asset from configuration.
+    def _parse_cfg(self):
+        """Parse the configuration and create assets in correct order.
         
-        Args:
-            name: Name of the asset
-            cfg: Configuration object with class_type attribute
+        Order matters:
+        1. Terrain - needs mesh_registry
+        2. Articulations - needs nothing special
+        3. Sensors - needs articulations to be created first
         """
-        # Get the asset class
-        asset_class = cfg.class_type
+        # Create terrain (registers meshes for sensors)
+        for name, cfg in self.cfg.__dict__.items():
+            if isinstance(cfg, TerrainGeneratorCfg):
+                if self.terrain is not None:
+                    raise RuntimeError(f"Multiple terrain configurations found: {name}")
 
-        # Create the asset instance
-        asset = asset_class(cfg)
+                self.terrain = cfg.class_type(cfg, mesh_registry=self.mesh_registry)
+                print(f"[Scene] Created terrain: {name}")
 
-        # Store in appropriate container
-        if isinstance(asset, Articulation):
-            self.articulations[name] = asset
-        # elif isinstance(asset, RigidObject):  # TODO: implement
-        #     self.rigid_objects[name] = asset
-        # elif isinstance(asset, SensorBase):  # TODO: implement
-        #     self.sensors[name] = asset
-        else:
-            # For now, just store in a generic container
-            if not hasattr(self, "_other_assets"):
-                self._other_assets = {}
-            self._other_assets[name] = asset
+        # Create articulations
+        for name, cfg in self.cfg.__dict__.items():
+            if isinstance(cfg, ArticulationCfg):
+                self.articulations[name] = cfg.class_type(cfg)
+                print(f"[Scene] Created articulation: {name}")
+
+        # Create sensors (attached to articulations)
+        for name, cfg in self.cfg.__dict__.items():
+            if not isinstance(cfg, SensorBaseCfg):
+                continue
+
+            # Find parent articulation by name
+            if cfg.articulation_name not in self.articulations:
+                raise RuntimeError(
+                    f"Sensor '{name}' references articulation '{cfg.articulation_name}' "
+                    f"which does not exist. Available articulations: {list(self.articulations.keys())}"
+                )
+
+            parent_articulation = self.articulations[cfg.articulation_name]
+
+            self.sensors[name] = cfg.class_type(
+                cfg,
+                articulation=parent_articulation,
+                sim=self.sim,
+                mesh_registry=self.mesh_registry
+            )
+
+            print(f"[Scene] Created sensor: {name} (attached to {cfg.articulation_name}/{cfg.body_name})")
 
     def _clone_environments(self):
         """Clone assets across multiple environments.
@@ -145,11 +147,12 @@ class InteractiveScene:
         env_ids = torch.arange(self.num_envs, device=self.sim.device, dtype=torch.long)
 
         # Initialize articulations
-        for name, articulation in self.articulations.items():
+        for articulation in self.articulations.values():
             articulation.initialize(env_ids, self.num_envs)
 
         # TODO: Initialize rigid objects
-        # TODO: Initialize sensors
+        
+        # Sensors initialize lazily on first data access (no explicit initialization needed)
 
     def reset(self, env_ids: torch.Tensor | None = None):
         """Reset specified environments.
@@ -165,7 +168,7 @@ class InteractiveScene:
             articulation.reset(env_ids)
 
         # TODO: Reset rigid objects
-        
+
         # Reset sensors
         for sensor in self.sensors.values():
             sensor.reset(env_ids)
@@ -227,10 +230,6 @@ class InteractiveScene:
         if key in self.sensors:
             return self.sensors[key]
 
-        # Try other assets
-        if hasattr(self, "_other_assets") and key in self._other_assets:
-            return self._other_assets[key]
-
         raise KeyError(f"Asset '{key}' not found in scene")
 
     def __contains__(self, key: str) -> bool:
@@ -242,12 +241,7 @@ class InteractiveScene:
         Returns:
             True if asset exists, False otherwise
         """
-        return (
-                key in self.articulations
-                or key in self.rigid_objects
-                or key in self.sensors
-                or (hasattr(self, "_other_assets") and key in self._other_assets)
-        )
+        return any((key in self.articulations, key in self.rigid_objects, key in self.sensors))
 
     def keys(self) -> list[str]:
         """Get all asset names in the scene.
@@ -259,8 +253,6 @@ class InteractiveScene:
         keys.extend(self.articulations.keys())
         keys.extend(self.rigid_objects.keys())
         keys.extend(self.sensors.keys())
-        if hasattr(self, "_other_assets"):
-            keys.extend(self._other_assets.keys())
         return keys
 
     def __repr__(self) -> str:
