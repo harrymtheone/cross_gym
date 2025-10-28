@@ -55,10 +55,12 @@ class DirectRLEnv(VecEnv):
         self.decimation = cfg.decimation
         self.max_episode_length = int(cfg.episode_length_s / self.dt)
 
-        # Minimal buffers
+        # Buffers
         self.obs_buf: dict[str, torch.Tensor] = {}
         self.reward_buf = torch.zeros(self.num_envs, device=self.device)
         self.reset_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        self.reset_terminated = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        self.reset_truncated = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.episode_length_buf = torch.zeros(self.num_envs, dtype=torch.int, device=self.device)
         self.extras = {}
 
@@ -83,7 +85,7 @@ class DirectRLEnv(VecEnv):
         pass
 
     @abstractmethod
-    def check_terminations(self) -> torch.Tensor:
+    def check_terminations(self):
         """Check termination conditions.
         
         Returns:
@@ -100,8 +102,6 @@ class DirectRLEnv(VecEnv):
             actions: Policy actions
         """
         pass
-
-    # ===== Gym Interface (Implemented) =====
 
     def step(self, actions: torch.Tensor) -> VecEnvStepReturn:
         """Step the environment.
@@ -125,8 +125,9 @@ class DirectRLEnv(VecEnv):
         self.episode_length_buf.add_(1)
 
         # Compute MDP components (user implements)
-        self.reward_buf = self.compute_rewards()
-        self.reset_buf = self.check_terminations()
+        reward_buf = self.compute_rewards()
+        self.check_terminations()
+        self.reset_buf[:] = self.reset_terminated | self.reset_truncated
 
         # Auto-reset
         reset_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
@@ -134,13 +135,9 @@ class DirectRLEnv(VecEnv):
             self._reset_idx(reset_ids)
 
         # Compute observations
-        self.obs_buf = self.compute_observations()
+        obs_buf = self.compute_observations()
 
-        # Gym interface
-        terminated = self.reset_buf.clone()
-        truncated = torch.zeros_like(self.reset_buf)
-
-        return self.obs_buf, self.reward_buf, terminated, truncated, self.extras
+        return obs_buf, reward_buf, self.reset_terminated, self.reset_truncated, self.extras
 
     def reset(self, env_ids=None) -> tuple:
         """Reset environments.
@@ -155,9 +152,9 @@ class DirectRLEnv(VecEnv):
             env_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
 
         self._reset_idx(env_ids)
-        self.obs_buf = self.compute_observations()
+        obs_buf = self.compute_observations()
 
-        return self.obs_buf, self.extras
+        return obs_buf, self.extras
 
     def _reset_idx(self, env_ids: torch.Tensor):
         """Reset specified environments (users can override for custom reset).
