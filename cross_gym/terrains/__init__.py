@@ -6,7 +6,7 @@ This module provides terrain generation capabilities:
 - Height field and trimesh support
 """
 
-from .sub_terrain import SubTerrainBaseCfg, SubTerrain
+from .sub_terrain import TerrainTypeID, TerrainCommandType, SubTerrainBaseCfg, SubTerrain
 
 from .terrain_generator import TerrainGenerator
 from .terrain_generator_cfg import TerrainGeneratorCfg

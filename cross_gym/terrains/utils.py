@@ -96,7 +96,7 @@ def trimesh_to_height_map_cuda(
     # Cast rays
     result = scene.cast_rays(rays_tensor)
     hit_t = result['t_hit'].numpy()
-    
+
     # Check which rays hit (finite t values)
     valid = np.isfinite(hit_t)
 
@@ -104,7 +104,7 @@ def trimesh_to_height_map_cuda(
     default_height = -1000.0
     heights = np.full(hit_t.shape, default_height, dtype=np.float32)
     heights[valid] = ray_start_height - hit_t[valid]
-    
+
     # Reshape and transpose
     heights = heights.reshape(ny, nx)
     heights = heights.T
@@ -182,9 +182,9 @@ def create_rectangle(
     # Create vertices centered at origin
     vertices = np.array([
         [-half_width, -half_length, height],  # bottom-left
-        [half_width, -half_length, height],   # bottom-right
-        [half_width, half_length, height],    # top-right
-        [-half_width, half_length, height],   # top-left
+        [half_width, -half_length, height],  # bottom-right
+        [half_width, half_length, height],  # top-right
+        [-half_width, half_length, height],  # top-left
     ], dtype=np.float32)
 
     # Create faces (two triangles)

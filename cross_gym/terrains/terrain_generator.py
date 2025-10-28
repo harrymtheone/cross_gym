@@ -9,13 +9,12 @@ import numpy as np
 import scipy.ndimage
 import trimesh
 
+from cross_gym.scene import MeshRegistry
 from . import SubTerrain
 from .utils import trimesh_to_height_map_cuda, edge_detection, create_rectangle
-from cross_gym.scene import MeshRegistry
 
 if TYPE_CHECKING:
     from . import TerrainGeneratorCfg
-
 
 
 class TerrainGenerator:
@@ -56,15 +55,16 @@ class TerrainGenerator:
 
         # Compute height map and origins
         self._compute_env_origins()
+        self._compute_goals()
         self._compute_height_map()
         self._compute_terrain_types()
 
         # Register mesh with singleton registry
         mesh_registry = MeshRegistry.instance()
-        
+
         if mesh_registry is None:
             raise RuntimeError("Mesh registry not found. Have you created an InteractiveScene?")
-        
+
         mesh_registry.register_mesh("terrain", self._global_trimesh)
         print(f"[TerrainGenerator] Registered mesh 'terrain' in mesh registry")
 
@@ -122,6 +122,16 @@ class TerrainGenerator:
     def terrain_type(self) -> np.ndarray:
         """Terrain type indices (num_rows, num_cols)."""
         return self._terrain_type
+
+    @property
+    def goals(self) -> np.ndarray:
+        """Goal positions for each terrain (num_rows, num_cols, max_goals, 3)."""
+        return self._goals
+
+    @property
+    def num_goals(self) -> np.ndarray:
+        """Number of valid goals for each terrain (num_rows, num_cols)."""
+        return self._num_goals
 
     @property
     def global_terrain_size(self) -> tuple[float, float]:
@@ -275,6 +285,36 @@ class TerrainGenerator:
             for col in range(self.cfg.num_cols):
                 self._origins[row, col] = self._terrain_mat[(row, col)].origin
 
+    def _compute_goals(self):
+        """Compute goal positions for each sub-terrain."""
+        # Find maximum number of goals across all sub-terrains
+        max_goals = 0
+        for sub_terrain in self._terrain_mat.values():
+            goals = sub_terrain.build_goals()
+            if goals is not None:
+                max_goals = max(max_goals, len(goals))
+
+        # If no goals, set to at least 1
+        max_goals = max(max_goals, 1)
+
+        # Initialize arrays
+        self._goals = np.zeros((self.cfg.num_rows, self.cfg.num_cols, max_goals, 3), dtype=float)
+        self._num_goals = np.zeros((self.cfg.num_rows, self.cfg.num_cols), dtype=int)
+
+        # Populate goals from each sub-terrain
+        for row in range(self.cfg.num_rows):
+            for col in range(self.cfg.num_cols):
+                sub_terrain = self._terrain_mat[(row, col)]
+                goals = sub_terrain.build_goals()
+
+                if goals is not None and len(goals) > 0:
+                    self._goals[row, col, :len(goals)] = goals
+                    self._num_goals[row, col] = len(goals)
+                else:
+                    # No goals for this terrain, set default to origin
+                    self._goals[row, col, 0] = sub_terrain.origin
+                    self._num_goals[row, col] = 0
+
     def _compute_height_map(self):
         """Convert global trimesh to height map for raycasting."""
         # Convert trimesh to height map using CUDA raycasting
@@ -303,8 +343,12 @@ class TerrainGenerator:
         """Store terrain type for each sub-terrain."""
         self._terrain_type = np.zeros((self.cfg.num_rows, self.cfg.num_cols), dtype=int)
 
-        # For now, just use row index as type
-        # TODO: Proper terrain type tracking
+        # Extract terrain type ID from each sub-terrain
         for row in range(self.cfg.num_rows):
             for col in range(self.cfg.num_cols):
-                self._terrain_type[row, col] = row
+                sub_terrain = self._terrain_mat[(row, col)]
+                if sub_terrain.terrain_type_id is not None:
+                    self._terrain_type[row, col] = sub_terrain.terrain_type_id.value
+                else:
+                    # Fallback to row index if not specified
+                    self._terrain_type[row, col] = row
