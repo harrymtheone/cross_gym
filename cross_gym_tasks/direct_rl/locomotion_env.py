@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import MISSING
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import torch
 
@@ -54,13 +54,17 @@ class LocomotionEnv(DirectRLEnv):
     def _init_buffers(self):
         # Actions and torques
         self.actions = torch.zeros(self.num_envs, self.cfg.num_actions, device=self.device)
+        self.target_dof_pos = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
         self.torques = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
+
+        # Environment origins and classes
+        self._init_env_origins()
 
         # PD controller for locomotion
         self._init_pd_controller()
 
-        # Environment origins and classes
-        self._init_env_origins()
+        # Domain randomization buffers
+        self._init_domain_rand_buffers()
 
     def _init_env_origins(self):
         """Initialize environment spawn origins.
@@ -99,33 +103,56 @@ class LocomotionEnv(DirectRLEnv):
                     self.d_gains[0, i] = kd
                     break
 
-    def process_actions(self, actions: torch.Tensor):
-        """Process actions using PD controller.
-        
+    def _init_domain_rand_buffers(self):
+        """Initialize domain randomization buffers for torque computation."""
+        if self.cfg.domain_rand.randomize_motor_offset:
+            self.motor_offsets = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
+
+        if self.cfg.domain_rand.randomize_gains:
+            self.p_gain_multiplier = torch.ones(self.num_envs, self.robot.num_dof, device=self.device)
+            self.d_gain_multiplier = torch.ones(self.num_envs, self.robot.num_dof, device=self.device)
+
+        if self.cfg.domain_rand.randomize_torque:
+            self.torque_multiplier = torch.ones(self.num_envs, self.robot.num_dof, device=self.device)
+
+    def _process_action(self, actions: torch.Tensor):
+        """Process policy actions into target joint positions.
+
         Args:
             actions: Policy actions (num_envs, num_actions)
         """
-        # Store actions
+        # Clip and store actions
         self.actions[:] = torch.clip(
-            actions,
-            -self.cfg.control.clip_actions,
-            self.cfg.control.clip_actions
+            actions, -self.cfg.control.clip_actions, self.cfg.control.clip_actions
         )
 
-        # Compute torques using PD controller
-        target_dof_pos = self.actions * self.cfg.control.action_scale + self.robot.data.default_root_pos
-        self.torques[:] = self.p_gains * (target_dof_pos - self.robot.data.dof_pos)
-        self.torques[:] -= self.d_gains * self.robot.data.dof_vel
+        # Compute target joint positions
+        self.target_dof_pos[:] = self.robot.data.default_joint_pos + self.cfg.control.action_scale * self.actions
 
-        # Apply torques
+        # Apply motor offset randomization (simulates calibration error)
+        if self.cfg.domain_rand.randomize_motor_offset:
+            self.target_dof_pos[:] += self.motor_offsets
+
+    def _apply_action(self):
+        """Compute torque, then apply to robot.
+        """
+
+        # Compute PD torques
+        if self.cfg.domain_rand.randomize_gains:
+            # Randomized gains
+            self.torques[:] = self.p_gain_multiplier * self.p_gains * (self.target_dof_pos - self.robot.data.dof_pos)
+            self.torques[:] -= self.d_gain_multiplier * self.d_gains * self.robot.data.dof_vel
+        else:
+            # Standard PD control
+            self.torques[:] = self.p_gains * (self.target_dof_pos - self.robot.data.dof_pos)
+            self.torques[:] -= self.d_gains * self.robot.data.dof_vel
+
+        # Apply torque randomization (simulates actuator variance)
+        if self.cfg.domain_rand.randomize_torque:
+            self.torques.mul_(self.torque_multiplier)
+
+        # Apply torques to robot
         self.robot.set_dof_effort_target(self.torques)
-
-    def step(self, actions: torch.Tensor):
-        """Step with base state refresh."""
-        # Call parent step
-        result = super().step(actions)
-
-        return result
 
     def _reset_idx(self, env_ids: torch.Tensor):
         """Reset environments with domain randomization."""
@@ -208,6 +235,43 @@ class LocomotionEnv(DirectRLEnv):
         self.robot.write_root_ang_vel_to_sim(ang_vel=root_ang_vel, env_ids=env_ids)
         self.robot.write_joint_pos_to_sim(joint_pos=joint_pos, env_ids=env_ids)
         self.robot.write_joint_vel_to_sim(joint_vel=joint_vel, env_ids=env_ids)
+
+        # ========== Randomize Torque Computation Parameters ==========
+        self._randomize_dof_parameters(env_ids)
+
+    def _randomize_dof_parameters(self, env_ids: Sequence[int]):
+        """Randomize DOF parameters for robustness.
+        
+        Args:
+            env_ids: Environment IDs to randomize
+        """
+        num_resets = len(env_ids)
+
+        # Randomize motor offsets (calibration error)
+        if self.cfg.domain_rand.randomize_motor_offset:
+            min_val, max_val = self.cfg.domain_rand.motor_offset_range
+            self.motor_offsets[env_ids] = math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
+            )
+
+        # Randomize PD gain multipliers (model uncertainty)
+        if self.cfg.domain_rand.randomize_gains:
+            min_kp, max_kp = self.cfg.domain_rand.kp_multiplier_range
+            self.p_gain_multiplier[env_ids] = math_utils.torch_rand_float(
+                min_kp, max_kp, (num_resets, self.robot.num_dof), device=self.device
+            )
+
+            min_kd, max_kd = self.cfg.domain_rand.kd_multiplier_range
+            self.d_gain_multiplier[env_ids] = math_utils.torch_rand_float(
+                min_kd, max_kd, (num_resets, self.robot.num_dof), device=self.device
+            )
+
+        # Randomize torque multiplier (actuator variance)
+        if self.cfg.domain_rand.randomize_torque:
+            min_val, max_val = self.cfg.domain_rand.torque_multiplier_range
+            self.torque_multiplier[env_ids] = math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
+            )
 
     # ===== Implement Abstract Methods =====
 

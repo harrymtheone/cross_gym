@@ -97,6 +97,24 @@ class DirectRLEnvCfg:
         """Randomize initial DOF velocities."""
         randomize_start_dof_vel_range: tuple[float, float] = (-0.5, 0.5)
         """Range for DOF velocity randomization (min, max) in rad/s."""
+        
+        # Torque computation randomization
+        randomize_motor_offset: bool = False
+        """Randomize motor position offset (simulates calibration error)."""
+        motor_offset_range: tuple[float, float] = (-0.02, 0.02)
+        """Motor offset range (min, max) in radians."""
+        
+        randomize_gains: bool = False
+        """Randomize PD gains (simulates model uncertainty)."""
+        kp_multiplier_range: tuple[float, float] = (0.8, 1.2)
+        """Kp gain multiplier range (min, max)."""
+        kd_multiplier_range: tuple[float, float] = (0.5, 1.5)
+        """Kd gain multiplier range (min, max)."""
+        
+        randomize_torque: bool = False
+        """Randomize output torque (simulates actuator variance)."""
+        torque_multiplier_range: tuple[float, float] = (0.9, 1.1)
+        """Torque multiplier range (min, max)."""
 
     domain_rand: DomainRandCfg = DomainRandCfg()
 

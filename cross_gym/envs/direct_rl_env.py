@@ -93,13 +93,26 @@ class DirectRLEnv(VecEnv):
         """
         pass
 
-    def process_actions(self, actions: torch.Tensor):
-        """Process and apply actions (users can override).
+    @abstractmethod
+    def _process_action(self, actions: torch.Tensor):
+        """Process policy actions into control targets.
         
-        Default: Do nothing. Users override to apply torques/commands.
+        Called once per environment step (before decimation loop).
+        This is where you convert raw policy outputs into control commands,
+        such as computing torques from actions via PD control.
         
         Args:
-            actions: Policy actions
+            actions: Policy actions (num_envs, action_dim)
+        """
+        pass
+
+    @abstractmethod
+    def _apply_action(self):
+        """Apply computed control targets to simulation.
+        
+        Called every physics step (inside decimation loop).
+        This is where you set the control targets (torques, positions, velocities)
+        into the robot, which will be written to sim by scene.write_data_to_sim().
         """
         pass
 
@@ -113,10 +126,11 @@ class DirectRLEnv(VecEnv):
             Tuple of (obs, reward, terminated, truncated, info)
         """
         # Process actions (user implements)
-        self.process_actions(actions)
+        self._process_action(actions)
 
         # Step simulation
         for _ in range(self.decimation):
+            self._apply_action()
             self.scene.write_data_to_sim()
             self.sim.step()
             self.scene.update(self.sim.physics_dt)
