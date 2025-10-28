@@ -6,6 +6,7 @@ and implementing compute_observations, compute_rewards, check_terminations.
 from __future__ import annotations
 
 import re
+from abc import abstractmethod
 from dataclasses import MISSING
 from typing import TYPE_CHECKING, Sequence
 
@@ -64,7 +65,7 @@ class LocomotionEnv(DirectRLEnv):
         self._init_pd_controller()
 
         # Domain randomization buffers
-        self._init_domain_rand_buffers()
+        self._init_domain_rand()
 
     def _init_env_origins(self):
         """Initialize environment spawn origins.
@@ -103,8 +104,8 @@ class LocomotionEnv(DirectRLEnv):
                     self.d_gains[0, i] = kd
                     break
 
-    def _init_domain_rand_buffers(self):
-        """Initialize domain randomization buffers for torque computation."""
+    def _init_domain_rand(self):
+        """Initialize domain randomization buffers."""
         if self.cfg.domain_rand.randomize_motor_offset:
             self.motor_offsets = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
 
@@ -176,6 +177,7 @@ class LocomotionEnv(DirectRLEnv):
 
         self._reset_root_state(env_ids)
         self._reset_joint_state(env_ids)
+        self._resample_commands(env_ids)
 
         # ========== Randomize Torque Computation Parameters ==========
         self._randomize_dof_parameters(env_ids)
@@ -310,6 +312,9 @@ class LocomotionEnv(DirectRLEnv):
             )
 
     # ===== Implement Abstract Methods =====
+    @abstractmethod
+    def _resample_commands(self, env_ids: Sequence[int]):
+        pass
 
     def compute_rewards(self) -> torch.Tensor:
         """Compute rewards using reward manager.
