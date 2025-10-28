@@ -114,7 +114,7 @@ class LocomotionEnv(DirectRLEnv):
 
         if self.cfg.domain_rand.randomize_torque:
             self.torque_multiplier = torch.ones(self.num_envs, self.robot.num_dof, device=self.device)
-        
+
         if self.cfg.domain_rand.randomize_friction:
             self.friction_coulomb = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
             self.friction_viscous = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
@@ -158,7 +158,7 @@ class LocomotionEnv(DirectRLEnv):
         if self.cfg.domain_rand.randomize_friction:
             # Viscous friction: proportional to velocity
             self.torques[:] -= self.robot.data.dof_vel * self.friction_viscous
-            
+
             # Coulomb friction: constant, opposes motion
             self.torques[:] -= torch.sign(self.robot.data.dof_vel) * self.friction_coulomb
 
@@ -174,6 +174,13 @@ class LocomotionEnv(DirectRLEnv):
         # Call parent reset first (resets to defaults)
         super()._reset_idx(env_ids)
 
+        self._reset_root_state(env_ids)
+        self._reset_joint_state(env_ids)
+
+        # ========== Randomize Torque Computation Parameters ==========
+        self._randomize_dof_parameters(env_ids)
+
+    def _reset_root_state(self, env_ids: Sequence[int]):
         num_resets = len(env_ids)
 
         # ========== Root State (from articulation defaults + terrain origins) ==========
@@ -227,6 +234,15 @@ class LocomotionEnv(DirectRLEnv):
                 min_val, max_val, (num_resets, 2), device=self.device
             )
 
+        # ========== Apply State to Simulation ==========
+        self.robot.write_root_pos_to_sim(pos=root_pos, env_ids=env_ids)
+        self.robot.write_root_quat_to_sim(quat=root_quat, env_ids=env_ids)
+        self.robot.write_root_lin_vel_to_sim(lin_vel=root_lin_vel, env_ids=env_ids)
+        self.robot.write_root_ang_vel_to_sim(ang_vel=root_ang_vel, env_ids=env_ids)
+
+    def _reset_joint_state(self, env_ids: Sequence[int]):
+        num_resets = len(env_ids)
+
         # ========== Joint State ==========
         joint_pos = self.robot.data.default_joint_pos[env_ids].clone()
         joint_vel = self.robot.data.default_joint_vel[env_ids].clone()
@@ -244,15 +260,8 @@ class LocomotionEnv(DirectRLEnv):
             )
 
         # ========== Apply State to Simulation ==========
-        self.robot.write_root_pos_to_sim(pos=root_pos, env_ids=env_ids)
-        self.robot.write_root_quat_to_sim(quat=root_quat, env_ids=env_ids)
-        self.robot.write_root_lin_vel_to_sim(lin_vel=root_lin_vel, env_ids=env_ids)
-        self.robot.write_root_ang_vel_to_sim(ang_vel=root_ang_vel, env_ids=env_ids)
         self.robot.write_joint_pos_to_sim(joint_pos=joint_pos, env_ids=env_ids)
         self.robot.write_joint_vel_to_sim(joint_vel=joint_vel, env_ids=env_ids)
-
-        # ========== Randomize Torque Computation Parameters ==========
-        self._randomize_dof_parameters(env_ids)
 
     def _randomize_dof_parameters(self, env_ids: Sequence[int]):
         """Randomize DOF parameters for robustness.
@@ -287,14 +296,14 @@ class LocomotionEnv(DirectRLEnv):
             self.torque_multiplier[env_ids] = math_utils.torch_rand_float(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
-        
+
         # Randomize friction (joint resistance)
         if self.cfg.domain_rand.randomize_friction:
             min_val, max_val = self.cfg.domain_rand.friction_coulomb_range
             self.friction_coulomb[env_ids] = math_utils.torch_rand_float(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
-            
+
             min_val, max_val = self.cfg.domain_rand.friction_viscous_range
             self.friction_viscous[env_ids] = math_utils.torch_rand_float(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
