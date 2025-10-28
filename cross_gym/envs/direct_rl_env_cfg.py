@@ -115,6 +115,13 @@ class DirectRLEnvCfg:
         """Randomize output torque (simulates actuator variance)."""
         torque_multiplier_range: tuple[float, float] = (0.9, 1.1)
         """Torque multiplier range (min, max)."""
+        
+        randomize_friction: bool = False
+        """Randomize joint friction (Coulomb + viscous)."""
+        friction_coulomb_range: tuple[float, float] = (0.0, 0.5)
+        """Coulomb friction range (min, max) - constant friction opposing motion."""
+        friction_viscous_range: tuple[float, float] = (0.0, 0.1)
+        """Viscous friction range (min, max) - velocity-proportional damping."""
 
     domain_rand: DomainRandCfg = DomainRandCfg()
 

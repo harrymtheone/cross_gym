@@ -114,6 +114,10 @@ class LocomotionEnv(DirectRLEnv):
 
         if self.cfg.domain_rand.randomize_torque:
             self.torque_multiplier = torch.ones(self.num_envs, self.robot.num_dof, device=self.device)
+        
+        if self.cfg.domain_rand.randomize_friction:
+            self.friction_coulomb = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
+            self.friction_viscous = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
 
     def _process_action(self, actions: torch.Tensor):
         """Process policy actions into target joint positions.
@@ -134,9 +138,12 @@ class LocomotionEnv(DirectRLEnv):
             self.target_dof_pos[:] += self.motor_offsets
 
     def _apply_action(self):
-        """Compute torque, then apply to robot.
+        """Compute PD torques and apply to robot.
+        
+        Called every physics step (inside decimation loop).
+        Computes torques from target positions using PD control,
+        applies friction models, and sends to robot.
         """
-
         # Compute PD torques
         if self.cfg.domain_rand.randomize_gains:
             # Randomized gains
@@ -146,6 +153,14 @@ class LocomotionEnv(DirectRLEnv):
             # Standard PD control
             self.torques[:] = self.p_gains * (self.target_dof_pos - self.robot.data.dof_pos)
             self.torques[:] -= self.d_gains * self.robot.data.dof_vel
+
+        # Apply friction model (Coulomb + viscous)
+        if self.cfg.domain_rand.randomize_friction:
+            # Viscous friction: proportional to velocity
+            self.torques[:] -= self.robot.data.dof_vel * self.friction_viscous
+            
+            # Coulomb friction: constant, opposes motion
+            self.torques[:] -= torch.sign(self.robot.data.dof_vel) * self.friction_coulomb
 
         # Apply torque randomization (simulates actuator variance)
         if self.cfg.domain_rand.randomize_torque:
@@ -256,20 +271,32 @@ class LocomotionEnv(DirectRLEnv):
 
         # Randomize PD gain multipliers (model uncertainty)
         if self.cfg.domain_rand.randomize_gains:
-            min_kp, max_kp = self.cfg.domain_rand.kp_multiplier_range
+            min_val, max_val = self.cfg.domain_rand.kp_multiplier_range
             self.p_gain_multiplier[env_ids] = math_utils.torch_rand_float(
-                min_kp, max_kp, (num_resets, self.robot.num_dof), device=self.device
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
-            min_kd, max_kd = self.cfg.domain_rand.kd_multiplier_range
+            min_val, max_val = self.cfg.domain_rand.kd_multiplier_range
             self.d_gain_multiplier[env_ids] = math_utils.torch_rand_float(
-                min_kd, max_kd, (num_resets, self.robot.num_dof), device=self.device
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
         # Randomize torque multiplier (actuator variance)
         if self.cfg.domain_rand.randomize_torque:
             min_val, max_val = self.cfg.domain_rand.torque_multiplier_range
             self.torque_multiplier[env_ids] = math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
+            )
+        
+        # Randomize friction (joint resistance)
+        if self.cfg.domain_rand.randomize_friction:
+            min_val, max_val = self.cfg.domain_rand.friction_coulomb_range
+            self.friction_coulomb[env_ids] = math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
+            )
+            
+            min_val, max_val = self.cfg.domain_rand.friction_viscous_range
+            self.friction_viscous[env_ids] = math_utils.torch_rand_float(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
