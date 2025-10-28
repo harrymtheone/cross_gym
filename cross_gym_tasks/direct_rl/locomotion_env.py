@@ -15,6 +15,7 @@ import torch
 from cross_gym.assets import Articulation
 from cross_gym.envs import DirectRLEnv, DirectRLEnvCfg
 from cross_gym.utils import configclass
+from cross_gym.utils import math as math_utils
 from cross_gym.terrains import TerrainGenerator
 
 if TYPE_CHECKING:
@@ -123,13 +124,93 @@ class LocomotionEnv(DirectRLEnv):
         return result
 
     def _reset_idx(self, env_ids: torch.Tensor):
-        """Reset environments with terrain-aware spawning."""
+        """Reset environments with domain randomization."""
         # Call parent reset first (resets to defaults)
         super()._reset_idx(env_ids)
         
-        # Override robot position with environment origins
-        spawn_pos = self.env_origins[env_ids]
-        self.robot.set_root_state(pos=spawn_pos, env_ids=env_ids)
+        num_resets = len(env_ids)
+        
+        # ========== Root State (from articulation defaults + terrain origins) ==========
+        # Position: terrain origin + default offset
+        root_pos = self.env_origins[env_ids] + self.robot.data.default_root_pos[env_ids]
+        
+        # Randomize xy position
+        if self.cfg.domain_rand.randomize_start_pos_xy:
+            min_val, max_val = self.cfg.domain_rand.randomize_start_pos_xy_range
+            root_pos[:, :2] += math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, 2), device=self.device
+            )
+        
+        # Randomize z height
+        if self.cfg.domain_rand.randomize_start_pos_z:
+            min_val, max_val = self.cfg.domain_rand.randomize_start_pos_z_range
+            root_pos[:, 2] += torch.abs(math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, 1), device=self.device
+            ).squeeze(1))
+        
+        # Orientation: default + random rotation
+        root_quat = self.robot.data.default_root_quat[env_ids].clone()
+        
+        # Randomize pitch and yaw
+        rand_euler = torch.zeros(num_resets, 3, device=self.device)
+        
+        if self.cfg.domain_rand.randomize_start_pitch:
+            min_val, max_val = self.cfg.domain_rand.randomize_start_pitch_range
+            rand_euler[:, 1] = math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, 1), device=self.device
+            ).squeeze(1)
+        
+        if self.cfg.domain_rand.randomize_start_yaw:
+            min_val, max_val = self.cfg.domain_rand.randomize_start_yaw_range
+            rand_euler[:, 2] = math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, 1), device=self.device
+            ).squeeze(1)
+        
+        # Apply random rotation
+        if self.cfg.domain_rand.randomize_start_pitch or self.cfg.domain_rand.randomize_start_yaw:
+            rand_quat = math_utils.quat_from_euler_xyz(rand_euler)
+            root_quat = math_utils.quat_mul(rand_quat, root_quat)
+        
+        # Velocity: default + randomization
+        root_lin_vel = self.robot.data.default_root_lin_vel[env_ids].clone()
+        root_ang_vel = self.robot.data.default_root_ang_vel[env_ids].clone()
+        
+        if self.cfg.domain_rand.randomize_start_lin_vel_xy:
+            min_val, max_val = self.cfg.domain_rand.randomize_start_lin_vel_xy_range
+            root_lin_vel[:, :2] += math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, 2), device=self.device
+            )
+        
+        # ========== Joint State ==========
+        joint_pos = self.robot.data.default_joint_pos[env_ids].clone()
+        joint_vel = self.robot.data.default_joint_vel[env_ids].clone()
+        
+        if self.cfg.domain_rand.randomize_start_dof_pos:
+            min_val, max_val = self.cfg.domain_rand.randomize_start_dof_pos_range
+            joint_pos[:] += math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
+            )
+        
+        if self.cfg.domain_rand.randomize_start_dof_vel:
+            min_val, max_val = self.cfg.domain_rand.randomize_start_dof_vel_range
+            joint_vel[:] += math_utils.torch_rand_float(
+                min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
+            )
+        
+        # ========== Apply State to Simulation ==========
+        self.robot.set_root_state(
+            pos=root_pos,
+            quat=root_quat,
+            lin_vel=root_lin_vel,
+            ang_vel=root_ang_vel,
+            env_ids=env_ids
+        )
+        
+        self.robot.set_joint_state(
+            joint_pos=joint_pos,
+            joint_vel=joint_vel,
+            env_ids=env_ids
+        )
 
     # ===== Implement Abstract Methods =====
 

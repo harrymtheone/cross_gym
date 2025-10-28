@@ -302,25 +302,32 @@ class Articulation(AssetBase):
             quat: torch.Tensor | None = None,
             lin_vel: torch.Tensor | None = None,
             ang_vel: torch.Tensor | None = None,
-            joint_pos: torch.Tensor | None = None,
-            joint_vel: torch.Tensor | None = None,
             env_ids: torch.Tensor | None = None
     ):
-        """Set root and joint state immediately in simulation.
+        """Set root state in simulation.
 
         Args:
             pos: Root positions (num_resets, 3).
             quat: Root orientations as quaternions (num_resets, 4) - (w, x, y, z).
             lin_vel: Root linear velocities (num_resets, 3).
             ang_vel: Root angular velocities (num_resets, 3).
+            env_ids: Environment IDs. If None, apply to all.
+        """
+        self._backend.set_root_state(pos, quat, lin_vel, ang_vel, env_ids)
+
+    def set_joint_state(
+            self,
+            joint_pos: torch.Tensor | None = None,
+            joint_vel: torch.Tensor | None = None,
+            env_ids: torch.Tensor | None = None
+    ):
+        """Set joint state in simulation.
+
+        Args:
             joint_pos: Joint positions (num_resets, num_dof).
             joint_vel: Joint velocities (num_resets, num_dof).
             env_ids: Environment IDs. If None, apply to all.
         """
-        # Write root state to backend (backend handles None gracefully)
-        self._backend.set_root_state(pos, quat, lin_vel, ang_vel, env_ids)
-        
-        # Write joint state to backend (backend handles None gracefully)
         self._backend.set_joint_state(joint_pos, joint_vel, env_ids)
 
     # ========== DOF Command Methods ==========
