@@ -8,4 +8,6 @@ Example tasks:
 """
 
 from .locomotion_env import LocomotionEnv, LocomotionEnvCfg
+from .parkour_env import ParkourEnv, ParkourEnvCfg
+
 from . import rewards

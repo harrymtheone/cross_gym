@@ -123,6 +123,11 @@ class TerrainGenerator:
         return self._terrain_type
 
     @property
+    def terrain_command_type(self) -> np.ndarray:
+        """Terrain command type indices (num_rows, num_cols)."""
+        return self._terrain_command_type
+
+    @property
     def global_terrain_size(self) -> tuple[float, float]:
         """Total terrain size (width, length)."""
         return self._global_terrain_size
@@ -364,15 +369,27 @@ class TerrainGenerator:
             self._edge_map = scipy.ndimage.binary_dilation(self._edge_map, structure=structure)
 
     def _compute_terrain_types(self):
-        """Store terrain type for each sub-terrain."""
+        """Store terrain type and command type for each sub-terrain."""
         self._terrain_type = np.zeros((self.cfg.num_rows, self.cfg.num_cols), dtype=int)
+        self._terrain_command_type = np.zeros((self.cfg.num_rows, self.cfg.num_cols), dtype=int)
 
-        # Extract terrain type ID from each sub-terrain
+        # Extract terrain type ID and command type from each sub-terrain
         for row in range(self.cfg.num_rows):
             for col in range(self.cfg.num_cols):
                 sub_terrain = self._terrain_mat[(row, col)]
-                if sub_terrain.type_id is not None:
-                    self._terrain_type[row, col] = sub_terrain.type_id.value
-                else:
-                    # Fallback to row index if not specified
-                    self._terrain_type[row, col] = row
+
+                # Store terrain type ID
+                if sub_terrain.type_id is None:
+                    raise ValueError(
+                        f"SubTerrain at ({row}, {col}) must define 'type_id' class attribute. "
+                        f"Set it to a TerrainTypeID enum value (e.g., type_id = TerrainTypeID.flat)."
+                    )
+                self._terrain_type[row, col] = sub_terrain.type_id.value
+
+                # Store command type
+                if sub_terrain.command_type is None:
+                    raise ValueError(
+                        f"SubTerrain at ({row}, {col}) must define 'command_type' class attribute. "
+                        f"Set it to a TerrainCommandType enum value (e.g., command_type = TerrainCommandType.Omni)."
+                    )
+                self._terrain_command_type[row, col] = sub_terrain.command_type.value

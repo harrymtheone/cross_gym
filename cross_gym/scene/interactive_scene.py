@@ -9,7 +9,7 @@ import torch
 from cross_gym.assets import AssetBase, Articulation, ArticulationCfg
 from cross_gym.sensors import SensorBaseCfg
 from cross_gym.sim import SimulationContext
-from cross_gym.terrains import TerrainGeneratorCfg
+from cross_gym.terrains import TerrainGenerator, TerrainGeneratorCfg
 from . import MeshRegistry
 
 if TYPE_CHECKING:
@@ -66,7 +66,7 @@ class InteractiveScene:
         self.articulations: dict[str, Articulation] = {}
         self.rigid_objects: dict[str, Any] = {}  # RigidObject not implemented yet
         self.sensors: dict[str, Any] = {}  # Sensors not implemented yet
-        self.terrain: Any = None  # Terrain not implemented yet
+        self.terrain: TerrainGenerator | None = None  # Terrain not implemented yet
 
         # Environment info
         self.num_envs = cfg.num_envs

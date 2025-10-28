@@ -93,3 +93,49 @@ def quat_from_euler_xyz(euler: torch.Tensor) -> torch.Tensor:
     z = cr * cp * sy - sr * sp * cy
 
     return torch.stack([w, x, y, z], dim=-1)
+
+
+@torch.jit.script
+def quat_to_euler_xyz(quat: torch.Tensor) -> torch.Tensor:
+    """Convert quaternion to Euler angles (roll, pitch, yaw).
+    
+    Args:
+        quat: Quaternion (w, x, y, z). Shape: (..., 4)
+        
+    Returns:
+        Euler angles in radians (roll, pitch, yaw). Shape: (..., 3)
+    """
+    w, x, y, z = quat[:, 0], quat[:, 1], quat[:, 2], quat[:, 3]
+    
+    # Roll (x-axis rotation)
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
+    roll = torch.atan2(sinr_cosp, cosr_cosp)
+    
+    # Pitch (y-axis rotation)
+    sinp = 2 * (w * y - z * x)
+    pitch = torch.where(
+        torch.abs(sinp) >= 1,
+        torch.sign(sinp) * torch.pi / 2,  # Use 90 degrees if out of range
+        torch.asin(sinp)
+    )
+    
+    # Yaw (z-axis rotation)
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
+    yaw = torch.atan2(siny_cosp, cosy_cosp)
+    
+    return torch.stack([roll, pitch, yaw], dim=-1)
+
+
+@torch.jit.script
+def wrap_to_pi(angles: torch.Tensor) -> torch.Tensor:
+    """Wrap angles to [-pi, pi] range.
+    
+    Args:
+        angles: Angles in radians. Shape: any
+        
+    Returns:
+        Wrapped angles in [-pi, pi]. Shape: same as input
+    """
+    return torch.atan2(torch.sin(angles), torch.cos(angles))

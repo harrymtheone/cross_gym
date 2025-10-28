@@ -55,7 +55,13 @@ class DirectRLEnv(VecEnv):
         self.decimation = cfg.decimation
         self.max_episode_length = int(cfg.episode_length_s / self.dt)
 
+        # -- counter for simulation steps
+        self._sim_step_counter = 0
+        # -- counter for curriculum
+        self.common_step_counter = 0
+
         # Buffers
+        self._ALL_ENVS = torch.arange(self.num_envs, dtype=torch.long, device=self.device)
         self.obs_buf: dict[str, torch.Tensor] = {}
         self.reward_buf = torch.zeros(self.num_envs, device=self.device)
         self.reset_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
@@ -130,13 +136,15 @@ class DirectRLEnv(VecEnv):
 
         # Step simulation
         for _ in range(self.decimation):
+            self._sim_step_counter += 1
             self._apply_action()
             self.scene.write_data_to_sim()
             self.sim.step()
             self.scene.update(self.sim.physics_dt)
 
-        # Update episode length
-        self.episode_length_buf.add_(1)
+        # Update counters
+        self.common_step_counter += 1  # Global step counter (for curriculum)
+        self.episode_length_buf.add_(1)  # Per-environment episode length
 
         # Compute rewards
         reward_buf = self.compute_rewards()
@@ -165,7 +173,7 @@ class DirectRLEnv(VecEnv):
             Tuple of (observations, info)
         """
         if env_ids is None:
-            env_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
+            env_ids = self._ALL_ENVS
 
         self._reset_idx(env_ids)
         obs_buf = self.compute_observations()

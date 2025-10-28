@@ -104,6 +104,7 @@ class ArticulationData:
         # World frame (reads from backend)
         self._root_pos_w = TimestampedBuffer()
         self._root_quat_w = TimestampedBuffer()
+        self._root_euler_w = TimestampedBuffer()
         self._root_vel_w = TimestampedBuffer()
         self._root_ang_vel_w = TimestampedBuffer()
         self._dof_pos = TimestampedBuffer()
@@ -160,6 +161,14 @@ class ArticulationData:
             self._root_ang_vel_w.data = self._backend.get_root_ang_vel_w()
             self._root_ang_vel_w.timestamp = self._sim_timestamp
         return self._root_ang_vel_w.data
+
+    @property
+    def root_euler_w(self) -> torch.Tensor:
+        """Root orientation as Euler angles (roll, pitch, yaw) in world frame. Shape (num_envs, 3)."""
+        if self._root_euler_w.timestamp < self._sim_timestamp:
+            self._root_euler_w.data = math_utils.quat_to_euler_xyz(self.root_quat_w)
+            self._root_euler_w.timestamp = self._sim_timestamp
+        return self._root_euler_w.data
 
     # ========== Root State (Base Frame) ==========
 

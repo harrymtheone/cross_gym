@@ -25,10 +25,9 @@ if TYPE_CHECKING:
 
 
 class LocomotionEnv(DirectRLEnv):
-    """Simple locomotion environment.
-    
-    Trains a quadruped/biped to walk forward using PD control.
-    """
+    """Simple locomotion environment."""
+
+    cfg: LocomotionEnvCfg
 
     def __init__(self, cfg: LocomotionEnvCfg):
         """Initialize locomotion environment.
@@ -53,6 +52,9 @@ class LocomotionEnv(DirectRLEnv):
         return self.scene.terrain
 
     def _init_buffers(self):
+        # Commands
+        self.commands = torch.zeros(self.num_envs, 4, device=self.device)  # [x, y, yaw, heading]
+
         # Actions and torques
         self.actions = torch.zeros(self.num_envs, self.cfg.num_actions, device=self.device)
         self.target_dof_pos = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
@@ -83,9 +85,14 @@ class LocomotionEnv(DirectRLEnv):
 
         # Get terrain origins and types
         terrain_origins = torch.from_numpy(self.scene.terrain.terrain_origins).to(self.device)  # [num_rows, num_cols, 3]
+        terrain_class = torch.from_numpy(self.scene.terrain.terrain_type).to(self.device)  # [num_rows, num_cols]
 
         # Index using random (row, col) assignments
-        self.env_origins = terrain_origins[env_rows, env_cols]
+        self.env_origins = torch.zeros(self.num_envs, 3, device=self.device)
+        self.env_origins[:] = terrain_origins[env_rows, env_cols]
+
+        self.env_class = torch.zeros(self.num_envs, device=self.device)
+        self.env_class[:] = terrain_class[env_rows, env_cols]
 
     def _init_pd_controller(self):
         """Initialize PD controller for locomotion."""
@@ -336,7 +343,7 @@ class LocomotionEnv(DirectRLEnv):
         # Timeout
         self.reset_truncated[:] |= self.episode_length_buf >= self.max_episode_length
 
-        # Collision
+        # Collision  TODO
         # self.terminated_buf[:] |= self.robot.data.net_contact_forces[:, ]
 
         # Height cutoff
@@ -387,7 +394,7 @@ class LocomotionEnvCfg(DirectRLEnvCfg):
 
     # Rewards
     @configclass
-    class LocomotionRewardsCfg(RewardManagerCfg):
+    class RewardsCfg(RewardManagerCfg):
         """Reward configuration for locomotion."""
 
         alive = ManagerTermCfg(func=rewards.alive, weight=1.0)
@@ -404,4 +411,4 @@ class LocomotionEnvCfg(DirectRLEnvCfg):
         energy = ManagerTermCfg(func=rewards.energy_penalty, weight=0.01)
         upright = ManagerTermCfg(func=rewards.upright_reward, weight=0.5)
 
-    rewards: LocomotionRewardsCfg = LocomotionRewardsCfg()
+    rewards: RewardsCfg = RewardsCfg()
