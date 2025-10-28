@@ -51,7 +51,7 @@ class SensorBase(ABC):
 
         # Initialize sensor data container
         if self._data is None:
-            raise RuntimeError("self._data must be initialized")
+            raise RuntimeError("self._data must be initialized before SensorBase.__init__")
         self._init_data()
 
         # Create sensor buffer for history/delay management

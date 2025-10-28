@@ -6,9 +6,9 @@ from dataclasses import MISSING
 from typing import Literal
 
 from cross_gym.sensors import SensorBaseCfg
-from cross_gym.sensors.patterns import ScanPatternCfg
 from cross_gym.utils import configclass
 from . import HeightScanner
+from .patterns import ScanPatternCfg
 
 
 @configclass

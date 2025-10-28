@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import MISSING
-
 import torch
 
 from cross_gym.utils import configclass
@@ -17,78 +15,66 @@ class ScanPatternCfg:
     Different sensors (ray caster, height scanner) can use the same patterns.
     """
 
-    func: callable = MISSING
-    """Pattern generation function."""
+    func: callable
+    """Pattern generation function. Must be set by subclass."""
 
 
-def grid_pattern(cfg: ScanPatternCfg, device: torch.device) -> torch.Tensor:
+def grid_pattern(cfg: GridPatternCfg, device: torch.device) -> torch.Tensor:
     """Generate a regular grid pattern in XY plane.
     
     Args:
-        cfg: Pattern configuration with 'size' and 'resolution' attributes
+        cfg: Grid pattern configuration
         device: Device to create tensor on
         
     Returns:
         Points in local frame. Shape: (num_points, 3)
     """
-    size = getattr(cfg, 'size', (2.0, 2.0))  # (x_size, y_size) in meters
-    resolution = getattr(cfg, 'resolution', (10, 10))  # (x_res, y_res)
-
-    x = torch.linspace(-size[0] / 2, size[0] / 2, resolution[0], device=device)
-    y = torch.linspace(-size[1] / 2, size[1] / 2, resolution[1], device=device)
+    x = torch.linspace(-cfg.size[0] / 2, cfg.size[0] / 2, cfg.resolution[0], device=device)
+    y = torch.linspace(-cfg.size[1] / 2, cfg.size[1] / 2, cfg.resolution[1], device=device)
 
     grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
     grid_z = torch.zeros_like(grid_x)
 
-    points = torch.stack([grid_x.flatten(), grid_y.flatten(), grid_z.flatten()], dim=-1)
-    return points
+    return torch.stack([grid_x.flatten(), grid_y.flatten(), grid_z.flatten()], dim=-1)
 
 
-def circle_pattern(cfg: ScanPatternCfg, device: torch.device) -> torch.Tensor:
+def circle_pattern(cfg: CirclePatternCfg, device: torch.device) -> torch.Tensor:
     """Generate a circle pattern in XY plane.
     
     Args:
-        cfg: Pattern configuration with 'radius' and 'num_points' attributes
+        cfg: Circle pattern configuration
         device: Device to create tensor on
         
     Returns:
         Points in local frame. Shape: (num_points, 3)
     """
-    radius = getattr(cfg, 'radius', 1.0)
-    num_points = getattr(cfg, 'num_points', 36)
-
-    angles = torch.linspace(0, 2 * torch.pi, num_points + 1, device=device)[:-1]
-    x = radius * torch.cos(angles)
-    y = radius * torch.sin(angles)
+    angles = torch.linspace(0, 2 * torch.pi, cfg.num_points + 1, device=device)[:-1]
+    x = cfg.radius * torch.cos(angles)
+    y = cfg.radius * torch.sin(angles)
     z = torch.zeros_like(x)
 
-    points = torch.stack([x, y, z], dim=-1)
-    return points
+    return torch.stack([x, y, z], dim=-1)
 
 
-def radial_grid_pattern(cfg: ScanPatternCfg, device: torch.device) -> torch.Tensor:
+def radial_grid_pattern(cfg: RadialGridPatternCfg, device: torch.device) -> torch.Tensor:
     """Generate a radial grid pattern (multiple circles at different radii).
     
     Args:
-        cfg: Pattern configuration with 'radii' and 'num_points_per_circle' attributes
+        cfg: Radial grid pattern configuration
         device: Device to create tensor on
         
     Returns:
         Points in local frame. Shape: (num_points, 3)
     """
-    radii = getattr(cfg, 'radii', [0.5, 1.0, 1.5])
-    num_points_per_circle = getattr(cfg, 'num_points_per_circle', 12)
-
     all_points = []
-    for radius in radii:
-        angles = torch.linspace(0, 2 * torch.pi, num_points_per_circle + 1, device=device)[:-1]
+    for radius in cfg.radii:
+        angles = torch.linspace(0, 2 * torch.pi, cfg.num_points_per_circle + 1, device=device)[:-1]
         x = radius * torch.cos(angles)
         y = radius * torch.sin(angles)
         z = torch.zeros_like(x)
         all_points.append(torch.stack([x, y, z], dim=-1))
 
-    points = torch.cat(all_points, dim=0)
-    return points
+    return torch.cat(all_points, dim=0)
 
 
 @configclass
