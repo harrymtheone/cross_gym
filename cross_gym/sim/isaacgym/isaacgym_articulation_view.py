@@ -126,10 +126,10 @@ class IsaacGymArticulationView:
 
     def set_root_state(
             self,
-            root_pos: torch.Tensor,
-            root_quat: torch.Tensor,
-            root_lin_vel: torch.Tensor,
-            root_ang_vel: torch.Tensor,
+            root_pos: torch.Tensor | None = None,
+            root_quat: torch.Tensor | None = None,
+            root_lin_vel: torch.Tensor | None = None,
+            root_ang_vel: torch.Tensor | None = None,
             env_ids: torch.Tensor | None = None
     ):
         """Set root link state for specified environments.
@@ -141,16 +141,25 @@ class IsaacGymArticulationView:
             root_ang_vel: Root angular velocities (num_envs, 3)
             env_ids: Environment indices to set (None = all)
         """
+        if all(x is None for x in [root_pos, root_quat, root_lin_vel, root_ang_vel]):
+            return
+
         if env_ids is None:
             env_ids = torch.arange(self.num_envs, device=self.device)
 
-        # Convert from (w, x, y, z) to Isaac Gym's (x, y, z, w)
-        quat_xyzw = torch.cat([root_quat[:, 1:4], root_quat[:, 0:1]], dim=-1)
-
-        self._root_state[env_ids, 0:3] = root_pos
-        self._root_state[env_ids, 3:7] = quat_xyzw
-        self._root_state[env_ids, 7:10] = root_lin_vel
-        self._root_state[env_ids, 10:13] = root_ang_vel
+        # Only update components that are provided
+        if root_pos is not None:
+            self._root_state[env_ids, 0:3] = root_pos
+        
+        if root_quat is not None:
+            # Convert from (w, x, y, z) to Isaac Gym's (x, y, z, w)
+            self._root_state[env_ids, 3:7] = root_quat[:, [1, 2, 3, 0]]
+        
+        if root_lin_vel is not None:
+            self._root_state[env_ids, 7:10] = root_lin_vel
+        
+        if root_ang_vel is not None:
+            self._root_state[env_ids, 10:13] = root_ang_vel
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -178,8 +187,12 @@ class IsaacGymArticulationView:
         """
         return self._dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
 
-    def set_joint_state(self, joint_pos: torch.Tensor, joint_vel: torch.Tensor,
-                        env_ids: torch.Tensor | None = None):
+    def set_joint_state(
+            self,
+            joint_pos: torch.Tensor | None = None,
+            joint_vel: torch.Tensor | None = None,
+            env_ids: torch.Tensor | None = None
+    ):
         """Set joint state for specified environments.
         
         Args:
@@ -187,13 +200,20 @@ class IsaacGymArticulationView:
             joint_vel: Joint velocities (num_envs, num_dof)
             env_ids: Environment indices to set (None = all)
         """
+        if all(x is None for x in [joint_pos, joint_vel]):
+            return
+
         if env_ids is None:
             env_ids = torch.arange(self.num_envs, device=self.device)
 
         dof_state_view = self._dof_state.view(self.num_envs, self.num_dof, 2)
-        dof_state_view[env_ids, :, 0] = joint_pos
-        dof_state_view[env_ids, :, 1] = joint_vel
-
+        
+        if joint_pos is not None:
+            dof_state_view[env_ids, :, 0] = joint_pos
+        
+        if joint_vel is not None:
+            dof_state_view[env_ids, :, 1] = joint_vel
+        
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_dof_state_tensor_indexed(
             self.sim,

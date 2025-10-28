@@ -30,6 +30,19 @@ class ArticulationData:
     num_bodies: int = None
     """Number of rigid bodies/links."""
 
+    # ========== Default Spawn State ==========
+    default_root_pos: torch.Tensor = None
+    """Default root position for reset. Shape: (num_envs, 3)."""
+    
+    default_root_quat: torch.Tensor = None
+    """Default root orientation for reset. Shape: (num_envs, 4)."""
+    
+    default_root_lin_vel: torch.Tensor = None
+    """Default root linear velocity for reset. Shape: (num_envs, 3)."""
+    
+    default_root_ang_vel: torch.Tensor = None
+    """Default root angular velocity for reset. Shape: (num_envs, 3)."""
+
     # ========== Default Joint State ==========
     default_joint_pos: torch.Tensor = None
     """Default joint positions from configuration. Shape: (num_envs, num_dof)."""

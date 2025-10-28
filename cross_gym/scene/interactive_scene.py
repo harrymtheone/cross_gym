@@ -101,6 +101,9 @@ class InteractiveScene:
                 self.terrain = cfg.class_type(cfg)
                 print(f"[Scene] Created terrain: {name}")
 
+        if self.terrain is None:
+            raise RuntimeError("No terrain created in the scene. Make sure terrain configuration is availalbe.")
+
         # Create articulations
         for name, cfg in self.cfg.__dict__.items():
             if isinstance(cfg, ArticulationCfg):

@@ -5,6 +5,8 @@ and implementing compute_observations, compute_rewards, check_terminations.
 """
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import MISSING
 from typing import TYPE_CHECKING
 
@@ -13,6 +15,7 @@ import torch
 from cross_gym.assets import Articulation
 from cross_gym.envs import DirectRLEnv, DirectRLEnvCfg
 from cross_gym.utils import configclass
+from cross_gym.terrains import TerrainGenerator
 
 if TYPE_CHECKING:
     from . import LocomotionEnvCfg
@@ -35,20 +38,44 @@ class LocomotionEnv(DirectRLEnv):
         # Locomotion-specific buffers
         self._init_buffers()
 
-        # PD controller for locomotion
-        self._init_pd_controller()
-
-        # Target velocity
-        self.target_velocity = torch.tensor([1.0, 0.0, 0.0], device=self.device)
-
     @property
     def robot(self) -> Articulation:
         return self.scene["robot"]
+
+    @property
+    def terrain(self) -> TerrainGenerator:
+        return self.scene.terrain
 
     def _init_buffers(self):
         # Actions and torques
         self.actions = torch.zeros(self.num_envs, self.cfg.num_actions, device=self.device)
         self.torques = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
+
+        # PD controller for locomotion
+        self._init_pd_controller()
+
+        # Environment origins and classes
+        self._init_env_origins()
+
+    def _init_env_origins(self):
+        """Initialize environment spawn origins.
+        
+        If terrain exists, randomly assigns each environment to a terrain patch.
+        Otherwise, creates a grid layout with env_spacing.
+        """
+        # Randomly assign each environment to a terrain patch (row, col)
+        num_rows = self.scene.terrain.num_rows
+        num_cols = self.scene.terrain.num_cols
+        
+        # Random (row, col) for each environment
+        env_rows = torch.randint(0, num_rows, (self.num_envs,), device=self.device)
+        env_cols = torch.randint(0, num_cols, (self.num_envs,), device=self.device)
+        
+        # Get terrain origins and types
+        terrain_origins = torch.from_numpy(self.scene.terrain.terrain_origins).to(self.device)  # [num_rows, num_cols, 3]
+        
+        # Index using random (row, col) assignments
+        self.env_origins = terrain_origins[env_rows, env_cols]
 
     def _init_pd_controller(self):
         """Initialize PD controller for locomotion."""
@@ -56,26 +83,16 @@ class LocomotionEnv(DirectRLEnv):
         self.d_gains = torch.zeros(1, self.robot.num_dof, device=self.device)
 
         for i, dof_name in enumerate(self.robot.dof_names):
-            # Find matching PD gains
+            # Find matching PD gains using regex
             for pattern, kp in self.cfg.control.stiffness.items():
-                if pattern in dof_name:
+                if re.search(pattern, dof_name):
                     self.p_gains[0, i] = kp
                     break
 
             for pattern, kd in self.cfg.control.damping.items():
-                if pattern in dof_name:
+                if re.search(pattern, dof_name):
                     self.d_gains[0, i] = kd
                     break
-
-    def _refresh_base_state(self):
-        """Refresh base state in base frame.
-        
-        Uses cached properties from ArticulationData to avoid redundant computation.
-        """
-        # Use cached properties (computed once per timestep, reused multiple times)
-        self.base_lin_vel = self.robot.data.root_lin_vel_b
-        self.base_ang_vel = self.robot.data.root_ang_vel_b
-        self.projected_gravity = self.robot.data.projected_gravity_b
 
     def process_actions(self, actions: torch.Tensor):
         """Process actions using PD controller.
@@ -103,15 +120,16 @@ class LocomotionEnv(DirectRLEnv):
         # Call parent step
         result = super().step(actions)
 
-        # Refresh base state for next iteration
-        self._refresh_base_state()
-
         return result
 
     def _reset_idx(self, env_ids: torch.Tensor):
-        """Reset with base state refresh."""
+        """Reset environments with terrain-aware spawning."""
+        # Call parent reset first (resets to defaults)
         super()._reset_idx(env_ids)
-        self._refresh_base_state()
+        
+        # Override robot position with environment origins
+        spawn_pos = self.env_origins[env_ids]
+        self.robot.set_root_state(pos=spawn_pos, env_ids=env_ids)
 
     # ===== Implement Abstract Methods =====
 

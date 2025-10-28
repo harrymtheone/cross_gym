@@ -84,10 +84,10 @@ class ArticulationView(ABC):
     @abstractmethod
     def set_root_state(
             self,
-            root_pos: torch.Tensor,
-            root_quat: torch.Tensor,
-            root_lin_vel: torch.Tensor,
-            root_ang_vel: torch.Tensor,
+            root_pos: torch.Tensor | None = None,
+            root_quat: torch.Tensor | None = None,
+            root_lin_vel: torch.Tensor | None = None,
+            root_ang_vel: torch.Tensor | None = None,
             env_ids: torch.Tensor | None = None
     ):
         """Set root state for specified environments.
@@ -124,8 +124,8 @@ class ArticulationView(ABC):
     @abstractmethod
     def set_joint_state(
             self,
-            joint_pos: torch.Tensor,
-            joint_vel: torch.Tensor,
+            joint_pos: torch.Tensor | None = None,
+            joint_vel: torch.Tensor | None = None,
             env_ids: torch.Tensor | None = None
     ):
         """Set joint state for specified environments.

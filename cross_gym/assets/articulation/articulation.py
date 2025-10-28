@@ -86,8 +86,8 @@ class Articulation(AssetBase):
         # Create data container (copies properties from backend)
         self.data = ArticulationData(self._backend, self.device)
 
-        # Initialize default joint state from configuration
-        self._init_default_joint_state()
+        # Parse configuration and initialize defaults
+        self._parse_cfg()
 
         # Initialize simulation command buffers (sent to sim after actuator processing)
         self._dof_pos_target_sim = torch.zeros(num_envs, self.num_dof, device=self.device)
@@ -97,13 +97,27 @@ class Articulation(AssetBase):
         # Process actuators (create actuator instances from config)
         self._process_actuators_cfg()
 
-    def _init_default_joint_state(self):
-        """Initialize default joint positions and velocities from configuration.
-        
-        Uses pattern matching to set default values for joints matching the patterns
-        in cfg.init_state.joint_pos and cfg.init_state.joint_vel.
+    def _parse_cfg(self):
+        """Parse configuration and initialize default state.
         """
-        # Initialize to zeros
+        # Initialize default root state from config
+        self.data.default_root_pos = torch.tensor(
+            self.cfg.init_state.pos, device=self.device
+        ).unsqueeze(0).repeat(self.num_envs, 1)
+        
+        self.data.default_root_quat = torch.tensor(
+            self.cfg.init_state.rot, device=self.device
+        ).unsqueeze(0).repeat(self.num_envs, 1)
+        
+        self.data.default_root_lin_vel = torch.tensor(
+            self.cfg.init_state.lin_vel, device=self.device
+        ).unsqueeze(0).repeat(self.num_envs, 1)
+        
+        self.data.default_root_ang_vel = torch.tensor(
+            self.cfg.init_state.ang_vel, device=self.device
+        ).unsqueeze(0).repeat(self.num_envs, 1)
+        
+        # Initialize default joint state to zeros
         self.data.default_joint_pos = torch.zeros(self.num_envs, self.num_dof, device=self.device)
         self.data.default_joint_vel = torch.zeros(self.num_envs, self.num_dof, device=self.device)
         
@@ -209,22 +223,17 @@ class Articulation(AssetBase):
         if env_ids is None:
             env_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
 
-        # Reset to initial state from config
-        num_resets = len(env_ids)
-
-        # Root state
-        root_pos = torch.tensor(self.cfg.init_state.pos, device=self.device).repeat(num_resets, 1)
-        root_quat = torch.tensor(self.cfg.init_state.rot, device=self.device).repeat(num_resets, 1)
-        root_lin_vel = torch.tensor(self.cfg.init_state.lin_vel, device=self.device).repeat(num_resets, 1)
-        root_ang_vel = torch.tensor(self.cfg.init_state.ang_vel, device=self.device).repeat(num_resets, 1)
-
-        # Set in backend
-        self._backend.set_root_state(root_pos, root_quat, root_lin_vel, root_ang_vel, env_ids)
-
-        # Reset joint state to defaults from configuration
+        # Reset to default state
+        root_pos = self.data.default_root_pos[env_ids]
+        root_quat = self.data.default_root_quat[env_ids]
+        root_lin_vel = self.data.default_root_lin_vel[env_ids]
+        root_ang_vel = self.data.default_root_ang_vel[env_ids]
+        
         joint_pos = self.data.default_joint_pos[env_ids]
         joint_vel = self.data.default_joint_vel[env_ids]
 
+        # Write to simulation
+        self._backend.set_root_state(root_pos, root_quat, root_lin_vel, root_ang_vel, env_ids)
         self._backend.set_joint_state(joint_pos, joint_vel, env_ids)
 
     def update(self, dt: float):
@@ -284,6 +293,35 @@ class Articulation(AssetBase):
             # Update state of the actuator model (for logging/inspection)
             self.data.computed_torque[:, actuator.dof_indices] = actuator.computed_torque
             self.data.applied_torque[:, actuator.dof_indices] = actuator.applied_torque
+
+    # ========== State Setters (for customizing reset behavior) ==========
+
+    def set_root_state(
+            self, 
+            pos: torch.Tensor | None = None,
+            quat: torch.Tensor | None = None,
+            lin_vel: torch.Tensor | None = None,
+            ang_vel: torch.Tensor | None = None,
+            joint_pos: torch.Tensor | None = None,
+            joint_vel: torch.Tensor | None = None,
+            env_ids: torch.Tensor | None = None
+    ):
+        """Set root and joint state immediately in simulation.
+
+        Args:
+            pos: Root positions (num_resets, 3).
+            quat: Root orientations as quaternions (num_resets, 4) - (w, x, y, z).
+            lin_vel: Root linear velocities (num_resets, 3).
+            ang_vel: Root angular velocities (num_resets, 3).
+            joint_pos: Joint positions (num_resets, num_dof).
+            joint_vel: Joint velocities (num_resets, num_dof).
+            env_ids: Environment IDs. If None, apply to all.
+        """
+        # Write root state to backend (backend handles None gracefully)
+        self._backend.set_root_state(pos, quat, lin_vel, ang_vel, env_ids)
+        
+        # Write joint state to backend (backend handles None gracefully)
+        self._backend.set_joint_state(joint_pos, joint_vel, env_ids)
 
     # ========== DOF Command Methods ==========
 
