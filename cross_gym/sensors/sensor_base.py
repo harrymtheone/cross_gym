@@ -103,13 +103,16 @@ class SensorBase(ABC):
     def update(self, dt: float, force_recompute: bool = False):
         """Update sensor state and check if recomputation is needed.
         
-        This method is called every simulation step. It updates timestamps and
-        determines which environments are outdated. Actual sensor computation
-        only happens if:
-        1. force_recompute=True (eager mode)
-        2. Debug visualization is enabled
-        3. History tracking is enabled (needs consistent updates)
-        4. Or when data is accessed (lazy mode, in _update_outdated_buffers)
+        This method is called every simulation step. It:
+        1. Updates timestamps and marks outdated environments
+        2. Checks for ready delayed measurements (appends to history when time_ready reached)
+        3. Triggers sensor computation if force_recompute or history/visualization enabled
+        
+        Actual sensor computation only happens if:
+        - force_recompute=True (eager mode)
+        - Debug visualization is enabled
+        - History tracking is enabled (needs consistent updates)
+        - Or when data is accessed (lazy mode, in _update_outdated_buffers)
         
         Args:
             dt: Time step in seconds
@@ -124,6 +127,11 @@ class SensorBase(ABC):
             self._timestamp - self._timestamp_last_update + 1e-6,
             self.cfg.update_period
         )
+
+        # Update buffer state (checks for ready measurements if using delay + history)
+        # This ensures measurements are appended to history as soon as they're ready,
+        # not waiting for the next sensor update
+        self._buffer.update()
 
         # Compute immediately if:
         # 1. Force recompute (eager mode from InteractiveScene)
