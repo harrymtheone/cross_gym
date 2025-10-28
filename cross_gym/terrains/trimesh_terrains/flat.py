@@ -10,7 +10,7 @@ from cross_gym.utils import configclass
 class FlatTerrain(SubTerrain):
     """Flat terrain (easiest difficulty)."""
 
-    terrain_type_id = TerrainTypeID.flat
+    type_id = TerrainTypeID.flat
     command_type = TerrainCommandType.Omni
 
     cfg: FlatCfg
@@ -23,7 +23,7 @@ class FlatTerrain(SubTerrain):
         terrain_x, terrain_y = self.cfg.size
         return terrain_x / 2, terrain_y / 2, 0.0
 
-    def build_goals(self) -> None:
+    def build_goals(self, **kwargs) -> None:
         return None
 
 

@@ -55,7 +55,6 @@ class TerrainGenerator:
 
         # Compute height map and origins
         self._compute_env_origins()
-        self._compute_goals()
         self._compute_height_map()
         self._compute_terrain_types()
 
@@ -122,16 +121,6 @@ class TerrainGenerator:
     def terrain_type(self) -> np.ndarray:
         """Terrain type indices (num_rows, num_cols)."""
         return self._terrain_type
-
-    @property
-    def goals(self) -> np.ndarray:
-        """Goal positions for each terrain (num_rows, num_cols, max_goals, 3)."""
-        return self._goals
-
-    @property
-    def num_goals(self) -> np.ndarray:
-        """Number of valid goals for each terrain (num_rows, num_cols)."""
-        return self._num_goals
 
     @property
     def global_terrain_size(self) -> tuple[float, float]:
@@ -285,35 +274,70 @@ class TerrainGenerator:
             for col in range(self.cfg.num_cols):
                 self._origins[row, col] = self._terrain_mat[(row, col)].origin
 
-    def _compute_goals(self):
-        """Compute goal positions for each sub-terrain."""
-        # Find maximum number of goals across all sub-terrains
-        max_goals = 0
-        for sub_terrain in self._terrain_mat.values():
-            goals = sub_terrain.build_goals()
-            if goals is not None:
-                max_goals = max(max_goals, len(goals))
+    def generate_goals(self, num_envs: int) -> tuple[np.ndarray, np.ndarray]:
+        """Generate goal positions for all terrains.
+        
+        Calls build_goals(num_envs=num_envs) for each sub-terrain.
+        Sub-terrains can return either:
+        - Static goals: (num_goals, 3) - same for all environments
+        - Per-env goals: (num_envs, num_goals, 3) - different per environment
+        
+        Args:
+            num_envs: Number of environments
+            
+        Returns:
+            Tuple of (goals, num_goals):
+            - goals: Goal positions (num_rows, num_cols, num_envs, max_goals, 3)
+            - num_goals: Number of goals per terrain (num_rows, num_cols)
+        """
+        # First pass: determine max number of goals
+        max_goal_num = 1
 
-        # If no goals, set to at least 1
-        max_goals = max(max_goals, 1)
-
-        # Initialize arrays
-        self._goals = np.zeros((self.cfg.num_rows, self.cfg.num_cols, max_goals, 3), dtype=float)
-        self._num_goals = np.zeros((self.cfg.num_rows, self.cfg.num_cols), dtype=int)
-
-        # Populate goals from each sub-terrain
         for row in range(self.cfg.num_rows):
             for col in range(self.cfg.num_cols):
                 sub_terrain = self._terrain_mat[(row, col)]
-                goals = sub_terrain.build_goals()
+                sub_goals = sub_terrain.build_goals(num_envs=num_envs)
 
-                if goals is not None and len(goals) > 0:
-                    self._goals[row, col, :len(goals)] = goals
-                    self._num_goals[row, col] = len(goals)
+                if sub_goals is None:
+                    continue
+
+                # Determine number of goals from shape
+                if sub_goals.ndim == 2:  # Static: (num_goals, 3)
+                    max_goal_num = max(max_goal_num, sub_goals.shape[0])
+                elif sub_goals.ndim == 3:  # Per-env: (num_envs, num_goals, 3)
+                    max_goal_num = max(max_goal_num, sub_goals.shape[1])
                 else:
-                    # No goals for this terrain, set default to origin
-                    self._goals[row, col, 0] = sub_terrain.origin
-                    self._num_goals[row, col] = 0
+                    raise ValueError(f"Invalid goals shape: {sub_goals.shape}. Expected (num_goals, 3) or (num_envs, num_goals, 3)")
+
+        # Initialize goal arrays
+        goals = np.zeros((self.cfg.num_rows, self.cfg.num_cols, num_envs, max_goal_num, 3))
+        goal_num = np.zeros((self.cfg.num_rows, self.cfg.num_cols), dtype=int)
+
+        # Second pass: populate goals
+        for row in range(self.cfg.num_rows):
+            for col in range(self.cfg.num_cols):
+                sub_terrain = self._terrain_mat[(row, col)]
+                sub_goals = sub_terrain.build_goals(num_envs=num_envs)
+
+                if sub_goals is None:
+                    continue
+
+                if sub_goals.ndim == 2:  # Static: (num_goals, 3)
+                    # Broadcast to all environments
+                    num_g = sub_goals.shape[0]
+                    goal_num[row, col] = num_g
+                    goals[row, col, :, :num_g] = sub_goals[np.newaxis, :, :]  # Broadcast
+
+                elif sub_goals.ndim == 3:  # Per-env: (num_envs, num_goals, 3)
+                    num_g = sub_goals.shape[1]
+                    goal_num[row, col] = num_g
+                    goals[row, col, :, :num_g] = sub_goals
+
+                # Transform goals from sub-terrain frame to world frame
+                goals[row, col, :, :, 0] += sub_terrain.frame_origin[0]
+                goals[row, col, :, :, 1] += sub_terrain.frame_origin[1]
+
+        return goals, goal_num
 
     def _compute_height_map(self):
         """Convert global trimesh to height map for raycasting."""
@@ -347,8 +371,8 @@ class TerrainGenerator:
         for row in range(self.cfg.num_rows):
             for col in range(self.cfg.num_cols):
                 sub_terrain = self._terrain_mat[(row, col)]
-                if sub_terrain.terrain_type_id is not None:
-                    self._terrain_type[row, col] = sub_terrain.terrain_type_id.value
+                if sub_terrain.type_id is not None:
+                    self._terrain_type[row, col] = sub_terrain.type_id.value
                 else:
                     # Fallback to row index if not specified
                     self._terrain_type[row, col] = row

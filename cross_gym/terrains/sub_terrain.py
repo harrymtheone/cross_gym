@@ -78,7 +78,7 @@ class SubTerrain(ABC):
     """
 
     # Class attributes (must be set by subclasses)
-    terrain_type_id: TerrainTypeID = None
+    type_id: TerrainTypeID = None
     """Terrain type identifier."""
 
     command_type: TerrainCommandType = None
@@ -125,10 +125,15 @@ class SubTerrain(ABC):
         pass
 
     @abstractmethod
-    def build_goals(self) -> np.ndarray | None:
+    def build_goals(self, **kwargs) -> np.ndarray | None:
         """Build goal positions for this sub-terrain (optional).
         
+        Can return:
+        - None: No goals for this terrain
+        - np.ndarray: Static goals (same for all environments). Shape: (num_goals, 3)
+        - np.ndarray: Static goals (different for each environment). Shape: (num_envs, num_goals, 3)
+
         Returns:
-            Goal positions array or None if no goals
+            Goal positions or None
         """
         pass
