@@ -35,16 +35,6 @@ class ParkourEnv(LocomotionEnv):
         """
         super().__init__(cfg)
 
-        self._parse_cfg()
-
-    def _parse_cfg(self):
-        """Parse parkour-specific configuration."""
-        # Command ranges for different terrain types
-        self.cmd_ranges_flat = self.cfg.commands.flat_ranges
-        self.cmd_ranges_stair = self.cfg.commands.stair_ranges
-        self.cmd_ranges_parkour = self.cfg.commands.parkour_ranges
-
-        # Curriculum enabled only if terrain exists
         self.curriculum = self.cfg.terrain_curriculum
 
     def _init_buffers(self):
@@ -175,44 +165,47 @@ class ParkourEnv(LocomotionEnv):
     def _resample_flat_commands(self, env_ids: torch.Tensor):
         """Sample omnidirectional commands for flat terrain."""
         num_resample_envs = len(env_ids)
+        cmd_cfg = self.cfg.commands
 
         # Sample linear velocities
         self.commands[env_ids, 0] = self._sample_command(
-            self.cmd_ranges_flat.lin_vel_x, self.cfg.commands.lin_vel_clip, num_resample_envs
+            cmd_cfg.flat_ranges.lin_vel_x, cmd_cfg.lin_vel_clip, num_resample_envs
         )
         self.commands[env_ids, 1] = self._sample_command(
-            self.cmd_ranges_flat.lin_vel_y, self.cfg.commands.lin_vel_clip, num_resample_envs
+            cmd_cfg.flat_ranges.lin_vel_y, cmd_cfg.lin_vel_clip, num_resample_envs
         )
 
         # Sample yaw rate
         self.commands[env_ids, 2] = self._sample_command(
-            self.cmd_ranges_flat.ang_vel_yaw, self.cfg.commands.ang_vel_clip, num_resample_envs
+            cmd_cfg.flat_ranges.ang_vel_yaw, cmd_cfg.ang_vel_clip, num_resample_envs
         )
 
     def _resample_stair_commands(self, env_ids: torch.Tensor):
         """Sample heading-based commands for stair terrain."""
         num_resample_envs = len(env_ids)
+        cmd_cfg = self.cfg.commands
 
         # Sample linear velocities
         self.commands[env_ids, 0] = self._sample_command(
-            self.cmd_ranges_stair.lin_vel_x, self.cfg.commands.lin_vel_clip, num_resample_envs
+            cmd_cfg.stair_ranges.lin_vel_x, cmd_cfg.lin_vel_clip, num_resample_envs
         )
         self.commands[env_ids, 1] = self._sample_command(
-            self.cmd_ranges_stair.lin_vel_y, self.cfg.commands.lin_vel_clip, num_resample_envs
+            cmd_cfg.stair_ranges.lin_vel_y, cmd_cfg.lin_vel_clip, num_resample_envs
         )
 
         # Sample heading (stored in index 3, converted to yaw_rate in update_command)
         self.commands[env_ids, 3] = self._sample_command(
-            self.cmd_ranges_stair.heading, self.cfg.commands.ang_vel_clip, num_resample_envs
+            cmd_cfg.stair_ranges.heading, cmd_cfg.ang_vel_clip, num_resample_envs
         )
 
     def _resample_parkour_commands(self, env_ids: torch.Tensor):
         """Sample goal-guided commands for parkour terrain."""
         num_resample_envs = len(env_ids)
+        cmd_cfg = self.cfg.commands
 
         # Sample forward velocity only (yaw controlled by goal direction)
         self.commands[env_ids, 0] = self._sample_command(
-            self.cmd_ranges_parkour.lin_vel_x, self.cfg.commands.lin_vel_clip, num_resample_envs
+            cmd_cfg.parkour_ranges.lin_vel_x, cmd_cfg.lin_vel_clip, num_resample_envs
         )
 
         # Store for goal-based modulation
@@ -348,6 +341,7 @@ class ParkourEnv(LocomotionEnv):
 
     def _update_parkour_commands(self):
         """Update commands for heading/goal-based navigation."""
+        cmd_cfg = self.cfg.commands
 
         # Update target position and yaw for parkour
         self.target_pos_rel[:] = self.cur_goals[:, :2] - self.robot.data.root_pos_w[:, :2]
@@ -358,7 +352,7 @@ class ParkourEnv(LocomotionEnv):
         # Compute yaw error for parkour (every 5 steps)
         if self.common_step_counter > 5 and self.common_step_counter % 5 == 0:
             base_yaw = self.robot.data.root_euler_w[:, 2]
-            self.delta_yaw[:] = math_utils.wrap_to_pi(self.target_yaw - base_yaw) * (self.command_x_parkour > self.cfg.commands.lin_vel_clip)
+            self.delta_yaw[:] = math_utils.wrap_to_pi(self.target_yaw - base_yaw) * (self.command_x_parkour > cmd_cfg.lin_vel_clip)
 
         # Update yaw command for stair terrain (Heading command type)
         env_is_heading = torch.eq(self.env_cmd_type, TerrainCommandType.Heading.value)
@@ -367,8 +361,8 @@ class ParkourEnv(LocomotionEnv):
             heading_error = math_utils.wrap_to_pi(self.commands[env_is_heading, 3] - base_yaw)
             self.commands[env_is_heading, 2] = torch.clamp(
                 heading_error,
-                min=self.cmd_ranges_stair.ang_vel_yaw[0],
-                max=self.cmd_ranges_stair.ang_vel_yaw[1]
+                min=cmd_cfg.stair_ranges.ang_vel_yaw[0],
+                max=cmd_cfg.stair_ranges.ang_vel_yaw[1]
             )
 
         # Update yaw command for parkour terrain (Goal command type)
@@ -377,8 +371,8 @@ class ParkourEnv(LocomotionEnv):
             delta_yaw_error = self.delta_yaw[env_is_goal]
             self.commands[env_is_goal, 2] = torch.clamp(
                 delta_yaw_error,
-                min=self.cmd_ranges_parkour.ang_vel_yaw[0],
-                max=self.cmd_ranges_parkour.ang_vel_yaw[1]
+                min=cmd_cfg.parkour_ranges.ang_vel_yaw[0],
+                max=cmd_cfg.parkour_ranges.ang_vel_yaw[1]
             )
 
             # Modulate forward velocity based on yaw alignment
