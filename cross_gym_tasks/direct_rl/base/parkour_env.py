@@ -270,7 +270,7 @@ class ParkourEnv(LocomotionEnv, ABC):
         # Curriculum logic for flat terrain (Omni command type)  TODO: we should obtain the actual terrain size of the terrain
         env_is_omni = torch.eq(self.env_cmd_type[env_ids], TerrainCommandType.Omni.value)
         if torch.any(env_is_omni):
-            move_up[env_is_omni] = dis_to_origin[env_is_omni] > self.cfg.terrain_size[0] / 4
+            move_up[env_is_omni] = dis_to_origin[env_is_omni] > self.cfg.terrain_size[0] / 4  # TODO: using cfg.terrain_size is a temporary expression!
             move_down[env_is_omni] = dis_to_origin[env_is_omni] < self.cfg.terrain_size[0] / 8
 
         # Curriculum logic for stair terrain (Heading command type)  TODO: we should obtain the actual terrain size of the terrain

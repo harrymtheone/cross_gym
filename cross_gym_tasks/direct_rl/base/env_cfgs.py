@@ -11,28 +11,96 @@ from . import LocomotionEnv, ParkourEnv, HumanoidEnv
 class LocomotionEnvCfg(DirectRLEnvCfg):
     """Configuration for locomotion environment."""
 
+    @configclass
+    class ControlCfg:
+        """PD controller configuration."""
+        action_scale: float = MISSING
+        """Scale factor for actions to joint positions."""
+
+        clip_actions: float = 100.0
+        """Clip actions to this range."""
+
+        stiffness: dict = MISSING
+        """DOF stiffness (kp) for PD controller. {dof_pattern: kp}"""
+
+        damping: dict = MISSING
+        """DOF damping (kd) for PD controller. {dof_pattern: kd}"""
+
+    @configclass
+    class DomainRandCfg:
+        """Domain randomization configuration for robust training."""
+
+        # Root state randomization
+        randomize_start_pos_xy: bool = False
+        """Randomize initial xy position."""
+        randomize_start_pos_xy_range: tuple[float, float] = (-0.5, 0.5)
+        """Range for xy position randomization (min, max) in meters."""
+
+        randomize_start_pos_z: bool = False
+        """Randomize initial z height."""
+        randomize_start_pos_z_range: tuple[float, float] = (0.0, 0.1)
+        """Range for z height randomization (min, max) in meters."""
+
+        randomize_start_yaw: bool = False
+        """Randomize initial yaw orientation."""
+        randomize_start_yaw_range: tuple[float, float] = (-3.14, 3.14)
+        """Range for yaw randomization (min, max) in radians."""
+
+        randomize_start_pitch: bool = False
+        """Randomize initial pitch orientation."""
+        randomize_start_pitch_range: tuple[float, float] = (-0.2, 0.2)
+        """Range for pitch randomization (min, max) in radians."""
+
+        randomize_start_lin_vel_xy: bool = False
+        """Randomize initial linear velocity (xy components only)."""
+        randomize_start_lin_vel_xy_range: tuple[float, float] = (-0.5, 0.5)
+        """Range for xy linear velocity randomization (min, max) in m/s."""
+
+        # Joint state randomization
+        randomize_start_dof_pos: bool = False
+        """Randomize initial DOF positions."""
+        randomize_start_dof_pos_range: tuple[float, float] = (-0.1, 0.1)
+        """Range for DOF position randomization (min, max) in radians."""
+
+        randomize_start_dof_vel: bool = False
+        """Randomize initial DOF velocities."""
+        randomize_start_dof_vel_range: tuple[float, float] = (-0.5, 0.5)
+        """Range for DOF velocity randomization (min, max) in rad/s."""
+
+        # Torque computation randomization
+        randomize_motor_offset: bool = False
+        """Randomize motor position offset (simulates calibration error)."""
+        motor_offset_range: tuple[float, float] = (-0.02, 0.02)
+        """Motor offset range (min, max) in radians."""
+
+        randomize_gains: bool = False
+        """Randomize PD gains (simulates model uncertainty)."""
+        kp_multiplier_range: tuple[float, float] = (0.8, 1.2)
+        """Kp gain multiplier range (min, max)."""
+        kd_multiplier_range: tuple[float, float] = (0.5, 1.5)
+        """Kd gain multiplier range (min, max)."""
+
+        randomize_torque: bool = False
+        """Randomize output torque (simulates actuator variance)."""
+        torque_multiplier_range: tuple[float, float] = (0.9, 1.1)
+        """Torque multiplier range (min, max)."""
+
+        randomize_friction: bool = False
+        """Randomize joint friction (Coulomb + viscous)."""
+        friction_coulomb_range: tuple[float, float] = (0.0, 0.5)
+        """Coulomb friction range (min, max) - constant friction opposing motion."""
+        friction_viscous_range: tuple[float, float] = (0.0, 0.1)
+        """Viscous friction range (min, max) - velocity-proportional damping."""
+
     class_type: type = LocomotionEnv
 
-    # Number of actions = number of DOF
     num_actions: int = MISSING
+    """Number of actions (usually equal to num_dof)."""
 
-    # Control - PD controller settings
-    @configclass
-    class LocomotionControlCfg(DirectRLEnvCfg.ControlCfg):
-        action_scale: float = 0.25
-        clip_actions: float = 100.0
+    control: ControlCfg = ControlCfg()
 
-        # PD gains (adjust for your robot)
-        stiffness: dict = {
-            ".*": 20.0,  # Match all joints
-        }
-        damping: dict = {
-            ".*": 0.5,
-        }
+    domain_rand: DomainRandCfg = DomainRandCfg()
 
-    control: LocomotionControlCfg = LocomotionControlCfg()
-
-    # Rewards
     rewards: dict = MISSING
 
 
@@ -40,45 +108,14 @@ class LocomotionEnvCfg(DirectRLEnvCfg):
 class ParkourEnvCfg(LocomotionEnvCfg):
     """Configuration for parkour environment."""
 
-    class_type: type = ParkourEnv
-
-    # ========== Terrain Curriculum ==========
-    terrain_curriculum: bool = True
-    """Enable terrain curriculum learning."""
-
-    max_init_terrain_level: int = 0
-    """Maximum initial terrain level (row). Increases with curriculum."""
-
-    terrain_size: tuple[float, float] = (8.0, 8.0)
-    """Size of each terrain patch (for curriculum distance thresholds)."""
-
-    # ========== Goal Navigation ==========
-    next_goal_threshold: float = 0.5
-    """Distance threshold to consider goal reached (meters)."""
-
-    reach_goal_delay: float = 0.5
-    """Time delay before moving to next goal (seconds)."""
-
-    # ========== Commands ==========
     @configclass
     class CommandsCfg:
-        """Command configuration for different terrain types."""
-        lin_vel_clip: float = 0.1
-        """Minimum linear velocity to be considered non-zero."""
-
-        ang_vel_clip: float = 0.1
-        """Minimum angular velocity to be considered non-zero."""
-
-        # Flat terrain commands (omnidirectional)
         @configclass
         class FlatRangesCfg:
             lin_vel_x: tuple[float, float] = (-1.0, 1.5)
             lin_vel_y: tuple[float, float] = (-0.5, 0.5)
             ang_vel_yaw: tuple[float, float] = (-1.0, 1.0)
 
-        flat_ranges: FlatRangesCfg = FlatRangesCfg()
-
-        # Stair terrain commands (heading-based)
         @configclass
         class StairRangesCfg:
             lin_vel_x: tuple[float, float] = (0.5, 1.5)
@@ -86,17 +123,45 @@ class ParkourEnvCfg(LocomotionEnvCfg):
             heading: tuple[float, float] = (-3.14, 3.14)
             ang_vel_yaw: tuple[float, float] = (-1.0, 1.0)
 
-        stair_ranges: StairRangesCfg = StairRangesCfg()
-
-        # Parkour terrain commands (goal-guided)
         @configclass
         class ParkourRangesCfg:
             lin_vel_x: tuple[float, float] = (0.5, 1.5)
             ang_vel_yaw: tuple[float, float] = (-1.0, 1.0)
 
+        """Command configuration for different terrain types."""
+        lin_vel_clip: float = 0.1
+        """Minimum linear velocity to be considered non-zero."""
+
+        ang_vel_clip: float = 0.1
+        """Minimum angular velocity to be considered non-zero."""
+
+        flat_ranges: FlatRangesCfg = FlatRangesCfg()
+        stair_ranges: StairRangesCfg = StairRangesCfg()
         parkour_ranges: ParkourRangesCfg = ParkourRangesCfg()
 
+    @configclass
+    class ParkourCfg:
+        terrain_curriculum: bool = True
+        """Enable terrain curriculum learning."""
+
+        max_init_terrain_level: int = 0
+        """Maximum initial terrain level (row). Increases with curriculum."""
+
+        terrain_size: tuple[float, float] = (8.0, 8.0)
+        """Size of each terrain patch (for curriculum distance thresholds)."""
+
+        # ========== Goal Navigation ==========
+        next_goal_threshold: float = 0.5
+        """Distance threshold to consider goal reached (meters)."""
+
+        reach_goal_delay: float = 0.5
+        """Time delay before moving to next goal (seconds)."""
+
+    class_type: type = ParkourEnv
+
     commands: CommandsCfg = CommandsCfg()
+
+    parkour: ParkourCfg = ParkourCfg()
 
 
 @configclass
