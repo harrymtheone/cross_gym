@@ -14,9 +14,11 @@ import torch
 
 from cross_gym.assets import Articulation
 from cross_gym.envs import DirectRLEnv, DirectRLEnvCfg
+from cross_gym.managers import RewardManager, RewardManagerCfg, ManagerTermCfg
 from cross_gym.utils import configclass
 from cross_gym.utils import math as math_utils
 from cross_gym.terrains import TerrainGenerator
+from . import rewards
 
 if TYPE_CHECKING:
     from . import LocomotionEnvCfg
@@ -38,6 +40,9 @@ class LocomotionEnv(DirectRLEnv):
 
         # Locomotion-specific buffers
         self._init_buffers()
+        
+        # Reward manager
+        self.reward_manager = RewardManager(cfg.rewards, self)
 
     @property
     def robot(self) -> Articulation:
@@ -232,33 +237,12 @@ class LocomotionEnv(DirectRLEnv):
         return {"policy": obs}
 
     def compute_rewards(self) -> torch.Tensor:
-        """Compute rewards for forward walking.
+        """Compute rewards using reward manager.
         
         Returns:
             Reward tensor (num_envs,)
         """
-        # Alive reward
-        reward = torch.ones(self.num_envs, device=self.device)
-
-        # Forward velocity tracking
-        forward_vel = self.base_lin_vel[:, 0]
-        target_vel = self.target_velocity[0]
-        reward += 2.0 * torch.exp(-torch.abs(forward_vel - target_vel))
-
-        # Penalize lateral and vertical velocity
-        reward -= 0.5 * torch.abs(self.base_lin_vel[:, 1])
-        reward -= 0.5 * torch.abs(self.base_lin_vel[:, 2])
-
-        # Penalize angular velocity
-        reward -= 0.1 * torch.sum(torch.abs(self.base_ang_vel), dim=-1)
-
-        # Energy penalty
-        reward -= 0.01 * torch.sum(self.torques ** 2, dim=-1)
-
-        # Upright reward
-        reward += 0.5 * self.projected_gravity[:, 2]
-
-        return reward
+        return self.reward_manager.compute(self.dt)
 
     def check_terminations(self) -> torch.Tensor:
         """Check termination conditions.
@@ -317,3 +301,24 @@ class LocomotionEnvCfg(DirectRLEnvCfg):
         }
 
     init_state: LocomotionInitStateCfg = LocomotionInitStateCfg()
+    
+    # Rewards
+    @configclass
+    class LocomotionRewardsCfg(RewardManagerCfg):
+        """Reward configuration for locomotion."""
+        
+        alive = ManagerTermCfg(func=rewards.alive, weight=1.0)
+        
+        forward_vel = ManagerTermCfg(
+            func=rewards.lin_vel_x_tracking, 
+            weight=2.0,
+            params={"target_vel": 1.0}
+        )
+        
+        lateral_vel = ManagerTermCfg(func=rewards.lin_vel_y_penalty, weight=0.5)
+        vertical_vel = ManagerTermCfg(func=rewards.lin_vel_z_penalty, weight=0.5)
+        ang_vel = ManagerTermCfg(func=rewards.ang_vel_penalty, weight=0.1)
+        energy = ManagerTermCfg(func=rewards.energy_penalty, weight=0.01)
+        upright = ManagerTermCfg(func=rewards.upright_reward, weight=0.5)
+
+    rewards: LocomotionRewardsCfg = LocomotionRewardsCfg()
