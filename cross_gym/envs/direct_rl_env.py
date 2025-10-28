@@ -122,7 +122,7 @@ class DirectRLEnv(VecEnv):
             self.scene.update(self.sim.physics_dt)
 
         # Update episode length
-        self.episode_length_buf += 1
+        self.episode_length_buf.add_(1)
 
         # Compute MDP components (user implements)
         self.reward_buf = self.compute_rewards()

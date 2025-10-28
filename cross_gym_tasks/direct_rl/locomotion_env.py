@@ -109,12 +109,12 @@ class LocomotionEnv(DirectRLEnv):
         )
 
         # Compute torques using PD controller
-        target_dof_pos = self.actions * self.cfg.control.action_scale + self.default_dof_pos
+        target_dof_pos = self.actions * self.cfg.control.action_scale + self.robot.data.default_root_pos
         self.torques[:] = self.p_gains * (target_dof_pos - self.robot.data.dof_pos)
         self.torques[:] -= self.d_gains * self.robot.data.dof_vel
 
         # Apply torques
-        self.robot.set_joint_effort_target(self.torques)
+        self.robot.set_dof_effort_target(self.torques)
 
     def step(self, actions: torch.Tensor):
         """Step with base state refresh."""
