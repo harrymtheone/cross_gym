@@ -2,28 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, TYPE_CHECKING, Tuple
+from typing import Callable, Dict, TYPE_CHECKING, Tuple, Any
 
 import torch
 
-from cross_gym.utils.configclass import configclass
 from .manager_base import ManagerBase
 from .manager_term_cfg import ManagerTermCfg
 
 if TYPE_CHECKING:
     from cross_gym.envs import ManagerBasedEnv
-
-
-@configclass
-class RewardManagerCfg:
-    """Configuration for reward manager.
-    
-    Example:
-        >>> rewards = RewardManagerCfg()
-        >>> rewards.tracking = ManagerTermCfg(func=tracking_reward, weight=1.0, ...)
-        >>> rewards.energy = ManagerTermCfg(func=energy_penalty, weight=-0.01, ...)
-    """
-    pass  # Terms are added as attributes dynamically
 
 
 class RewardManager(ManagerBase):
@@ -35,7 +22,7 @@ class RewardManager(ManagerBase):
     Each reward term is a function that takes the environment and returns a reward tensor.
     """
 
-    def __init__(self, cfg: RewardManagerCfg, env: ManagerBasedEnv):
+    def __init__(self, cfg: Any, env: ManagerBasedEnv):
         """Initialize reward manager.
         
         Args:

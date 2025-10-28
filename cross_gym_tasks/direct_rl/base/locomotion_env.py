@@ -6,25 +6,22 @@ and implementing compute_observations, compute_rewards, check_terminations.
 from __future__ import annotations
 
 import re
-from abc import abstractmethod
-from dataclasses import MISSING
+from abc import abstractmethod, ABC
 from typing import TYPE_CHECKING, Sequence
 
 import torch
 
 from cross_gym.assets import Articulation
-from cross_gym.envs import DirectRLEnv, DirectRLEnvCfg
-from cross_gym.managers import RewardManager, RewardManagerCfg, ManagerTermCfg
+from cross_gym.envs import DirectRLEnv
+from cross_gym.managers import RewardManager
 from cross_gym.terrains import TerrainGenerator
-from cross_gym.utils import configclass
 from cross_gym.utils import math as math_utils
-from . import rewards
 
 if TYPE_CHECKING:
     from . import LocomotionEnvCfg
 
 
-class LocomotionEnv(DirectRLEnv):
+class LocomotionEnv(DirectRLEnv, ABC):
     """Simple locomotion environment."""
 
     cfg: LocomotionEnvCfg
@@ -348,67 +345,3 @@ class LocomotionEnv(DirectRLEnv):
 
         # Height cutoff
         self.reset_terminated[:] |= self.robot.data.root_pos_w[:, 2] < -10.
-
-
-# ============================================================================
-# Configuration
-# ============================================================================
-
-@configclass
-class LocomotionEnvCfg(DirectRLEnvCfg):
-    """Configuration for locomotion environment."""
-
-    class_type: type = LocomotionEnv
-
-    # Number of actions = number of DOF
-    num_actions: int = MISSING
-
-    # Control - PD controller settings
-    @configclass
-    class LocomotionControlCfg(DirectRLEnvCfg.ControlCfg):
-        action_scale: float = 0.25
-        clip_actions: float = 100.0
-
-        # PD gains (adjust for your robot)
-        stiffness: dict = {
-            ".*": 20.0,  # Match all joints
-        }
-        damping: dict = {
-            ".*": 0.5,
-        }
-
-    control: LocomotionControlCfg = LocomotionControlCfg()
-
-    # Initial state
-    @configclass
-    class LocomotionInitStateCfg(DirectRLEnvCfg.InitStateCfg):
-        pos: tuple = (0.0, 0.0, 0.6)
-        rot: tuple = (1.0, 0.0, 0.0, 0.0)
-
-        # Default joint angles (adjust for your robot)
-        default_joint_angles: dict = {
-            ".*": 0.0,
-        }
-
-    init_state: LocomotionInitStateCfg = LocomotionInitStateCfg()
-
-    # Rewards
-    @configclass
-    class RewardsCfg(RewardManagerCfg):
-        """Reward configuration for locomotion."""
-
-        alive = ManagerTermCfg(func=rewards.alive, weight=1.0)
-
-        forward_vel = ManagerTermCfg(
-            func=rewards.lin_vel_x_tracking,
-            weight=2.0,
-            params={"target_vel": 1.0}
-        )
-
-        lateral_vel = ManagerTermCfg(func=rewards.lin_vel_y_penalty, weight=0.5)
-        vertical_vel = ManagerTermCfg(func=rewards.lin_vel_z_penalty, weight=0.5)
-        ang_vel = ManagerTermCfg(func=rewards.ang_vel_penalty, weight=0.1)
-        energy = ManagerTermCfg(func=rewards.energy_penalty, weight=0.01)
-        upright = ManagerTermCfg(func=rewards.upright_reward, weight=0.5)
-
-    rewards: RewardsCfg = RewardsCfg()

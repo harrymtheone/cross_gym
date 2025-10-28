@@ -5,9 +5,10 @@ For simpler tasks or when you need more direct control.
 
 Example tasks:
 - Locomotion (simple forward walking)
+- Parkour (terrain navigation with curriculum)
+- Humanoid (bipedal locomotion with gait control)
 """
 
-from .locomotion_env import LocomotionEnv, LocomotionEnvCfg
-from .parkour_env import ParkourEnv, ParkourEnvCfg
+from cross_gym_tasks.direct_rl.base.locomotion_env import LocomotionEnv
+from cross_gym_tasks.direct_rl.base.env_cfgs import LocomotionEnvCfg
 
-from . import rewards

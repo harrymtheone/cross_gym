@@ -9,20 +9,21 @@ This extends LocomotionEnv with:
 
 from __future__ import annotations
 
+from abc import ABC
 from typing import TYPE_CHECKING
 
 import torch
 
 from cross_gym.terrains import TerrainCommandType
-from cross_gym.utils import configclass
 from cross_gym.utils import math as math_utils
-from . import LocomotionEnv, LocomotionEnvCfg
+from cross_gym_tasks.direct_rl import LocomotionEnv
+from cross_gym_tasks.direct_rl.base.env_cfgs import ParkourEnvCfg
 
 if TYPE_CHECKING:
-    from . import ParkourEnvCfg
+    from cross_gym_tasks.direct_rl import ParkourEnvCfg
 
 
-class ParkourEnv(LocomotionEnv):
+class ParkourEnv(LocomotionEnv, ABC):
     """Parkour environment with curriculum learning and goal navigation."""
 
     cfg: ParkourEnvCfg
@@ -401,73 +402,3 @@ class ParkourEnv(LocomotionEnv):
         env_is_goal = torch.eq(self.env_cmd_type, TerrainCommandType.Goal.value)
         self.reach_goal_cutoff[:] = (self.cur_goal_idx >= self.env_goal_num) & env_is_goal
         self.reset_truncated[:] |= self.reach_goal_cutoff
-
-
-# ============================================================================
-# Configuration
-# ============================================================================
-
-@configclass
-class ParkourEnvCfg(LocomotionEnvCfg):
-    """Configuration for parkour environment."""
-
-    class_type: type = ParkourEnv
-
-    # ========== Terrain Curriculum ==========
-    terrain_curriculum: bool = True
-    """Enable terrain curriculum learning."""
-
-    max_init_terrain_level: int = 0
-    """Maximum initial terrain level (row). Increases with curriculum."""
-
-    terrain_size: tuple[float, float] = (8.0, 8.0)
-    """Size of each terrain patch (for curriculum distance thresholds)."""
-
-    # ========== Goal Navigation ==========
-    next_goal_threshold: float = 0.5
-    """Distance threshold to consider goal reached (meters)."""
-
-    reach_goal_delay: float = 0.5
-    """Time delay before moving to next goal (seconds)."""
-
-    # ========== Commands ==========
-    @configclass
-    class CommandsCfg:
-        """Command configuration for different terrain types."""
-        lin_vel_clip: float = 0.1
-        """Minimum linear velocity to be considered non-zero."""
-
-        ang_vel_clip: float = 0.1
-        """Minimum angular velocity to be considered non-zero."""
-
-        # Flat terrain commands (omnidirectional)
-        @configclass
-        class FlatRangesCfg:
-            lin_vel_x: tuple[float, float] = (-1.0, 1.5)
-            lin_vel_y: tuple[float, float] = (-0.5, 0.5)
-            ang_vel_yaw: tuple[float, float] = (-1.0, 1.0)
-
-        flat_ranges: FlatRangesCfg = FlatRangesCfg()
-
-        # Stair terrain commands (heading-based)
-        @configclass
-        class StairRangesCfg:
-            lin_vel_x: tuple[float, float] = (0.5, 1.5)
-            lin_vel_y: tuple[float, float] = (-0.3, 0.3)
-            heading: tuple[float, float] = (-3.14, 3.14)
-            ang_vel_yaw: tuple[float, float] = (-1.0, 1.0)
-
-        stair_ranges: StairRangesCfg = StairRangesCfg()
-
-        # Parkour terrain commands (goal-guided)
-        @configclass
-        class ParkourRangesCfg:
-            lin_vel_x: tuple[float, float] = (0.5, 1.5)
-            ang_vel_yaw: tuple[float, float] = (-1.0, 1.0)
-
-        parkour_ranges: ParkourRangesCfg = ParkourRangesCfg()
-
-    commands: CommandsCfg = CommandsCfg()
-
-
-__all__ = ["ParkourEnv", "ParkourEnvCfg"]
