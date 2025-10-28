@@ -30,6 +30,13 @@ class ArticulationData:
     num_bodies: int = None
     """Number of rigid bodies/links."""
 
+    # ========== Default Joint State ==========
+    default_joint_pos: torch.Tensor = None
+    """Default joint positions from configuration. Shape: (num_envs, num_dof)."""
+
+    default_joint_vel: torch.Tensor = None
+    """Default joint velocities from configuration. Shape: (num_envs, num_dof)."""
+
     # ========== DOF Commands ==========
     dof_pos_target: torch.Tensor = None
     """DOF position targets commanded by user. Shape (num_envs, num_dof).

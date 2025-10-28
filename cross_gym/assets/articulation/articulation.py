@@ -86,6 +86,9 @@ class Articulation(AssetBase):
         # Create data container (copies properties from backend)
         self.data = ArticulationData(self._backend, self.device)
 
+        # Initialize default joint state from configuration
+        self._init_default_joint_state()
+
         # Initialize simulation command buffers (sent to sim after actuator processing)
         self._dof_pos_target_sim = torch.zeros(num_envs, self.num_dof, device=self.device)
         self._dof_vel_target_sim = torch.zeros(num_envs, self.num_dof, device=self.device)
@@ -93,6 +96,30 @@ class Articulation(AssetBase):
 
         # Process actuators (create actuator instances from config)
         self._process_actuators_cfg()
+
+    def _init_default_joint_state(self):
+        """Initialize default joint positions and velocities from configuration.
+        
+        Uses pattern matching to set default values for joints matching the patterns
+        in cfg.init_state.joint_pos and cfg.init_state.joint_vel.
+        """
+        # Initialize to zeros
+        self.data.default_joint_pos = torch.zeros(self.num_envs, self.num_dof, device=self.device)
+        self.data.default_joint_vel = torch.zeros(self.num_envs, self.num_dof, device=self.device)
+        
+        # Apply default joint positions from pattern matching
+        if self.cfg.init_state.joint_pos:
+            for pattern, value in self.cfg.init_state.joint_pos.items():
+                for i, dof_name in enumerate(self.dof_names):
+                    if re.search(pattern, dof_name):
+                        self.data.default_joint_pos[:, i] = value
+        
+        # Apply default joint velocities from pattern matching
+        if self.cfg.init_state.joint_vel:
+            for pattern, value in self.cfg.init_state.joint_vel.items():
+                for i, dof_name in enumerate(self.dof_names):
+                    if re.search(pattern, dof_name):
+                        self.data.default_joint_vel[:, i] = value
 
     def _process_actuators_cfg(self):
         """Process actuator configurations and create actuator instances.
@@ -194,9 +221,9 @@ class Articulation(AssetBase):
         # Set in backend
         self._backend.set_root_state(root_pos, root_quat, root_lin_vel, root_ang_vel, env_ids)
 
-        # Reset joint state to zeros (or can be configured)
-        joint_pos = torch.zeros(num_resets, self.num_dof, device=self.device)
-        joint_vel = torch.zeros(num_resets, self.num_dof, device=self.device)
+        # Reset joint state to defaults from configuration
+        joint_pos = self.data.default_joint_pos[env_ids]
+        joint_vel = self.data.default_joint_vel[env_ids]
 
         self._backend.set_joint_state(joint_pos, joint_vel, env_ids)
 

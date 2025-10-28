@@ -52,18 +52,10 @@ class LocomotionEnv(DirectRLEnv):
 
     def _init_pd_controller(self):
         """Initialize PD controller for locomotion."""
-        # Default joint positions
-        self.default_dof_pos = torch.zeros(1, self.robot.num_dof, device=self.device)
         self.p_gains = torch.zeros(1, self.robot.num_dof, device=self.device)
         self.d_gains = torch.zeros(1, self.robot.num_dof, device=self.device)
 
         for i, dof_name in enumerate(self.robot.dof_names):
-            # Find matching joint angle
-            for pattern, angle in self.cfg.init_state.default_joint_angles.items():
-                if pattern in dof_name:
-                    self.default_dof_pos[0, i] = angle
-                    break
-
             # Find matching PD gains
             for pattern, kp in self.cfg.control.stiffness.items():
                 if pattern in dof_name:

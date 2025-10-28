@@ -24,9 +24,10 @@ class AssetBaseCfg:
     class InitStateCfg:
         """Initial state of the asset."""
         pos: tuple[float, float, float] = (0.0, 0.0, 0.0)
-        rot: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)  # (w, x, y, z)
-        lin_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
-        ang_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        """Initial position (x, y, z) in world frame."""
+        
+        rot: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+        """Initial rotation as quaternion (w, x, y, z) in world frame."""
 
     init_state: InitStateCfg = InitStateCfg()
 

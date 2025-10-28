@@ -21,6 +21,30 @@ class ArticulationCfg(AssetBaseCfg):
 
     # Asset file
     file: str = MISSING  # Path to URDF/USD file
+    
+    # Articulation-specific initial state
+    @configclass
+    class InitStateCfg(AssetBaseCfg.InitStateCfg):
+        lin_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        """Initial linear velocity (vx, vy, vz) in world frame."""
+        
+        ang_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        """Initial angular velocity (wx, wy, wz) in world frame."""
+        
+        joint_pos: dict[str, float] = {}
+        """Default joint positions as pattern-to-value mapping.
+        
+        Example:
+            joint_pos = {
+                ".*hip.*": 0.0,
+                ".*knee.*": 0.5,
+            }
+        """
+        
+        joint_vel: dict[str, float] = {}
+        """Default joint velocities as pattern-to-value mapping."""
+    
+    init_state: InitStateCfg = InitStateCfg()
 
     # Asset properties
     @configclass
