@@ -139,3 +139,29 @@ def wrap_to_pi(angles: torch.Tensor) -> torch.Tensor:
         Wrapped angles in [-pi, pi]. Shape: same as input
     """
     return torch.atan2(torch.sin(angles), torch.cos(angles))
+
+
+@torch.jit.script  
+def transform_by_yaw(points: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
+    """Transform points by yaw rotation (around z-axis).
+    
+    Args:
+        points: Points to transform. Shape: (num_pts, 3)
+        yaw: Yaw angles in radians. Shape: (num_pts,)
+        
+    Returns:
+        Transformed points. Shape: (num_pts, 3)
+    """
+    # Extract x, y, z
+    x = points[:, 0]
+    y = points[:, 1]
+    z = points[:, 2]
+    
+    # Apply yaw rotation
+    cos_yaw = torch.cos(yaw)
+    sin_yaw = torch.sin(yaw)
+    
+    x_rot = x * cos_yaw - y * sin_yaw
+    y_rot = x * sin_yaw + y * cos_yaw
+    
+    return torch.stack([x_rot, y_rot, z], dim=-1)
