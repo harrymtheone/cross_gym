@@ -202,19 +202,12 @@ class LocomotionEnv(DirectRLEnv):
             )
 
         # ========== Apply State to Simulation ==========
-        self.robot.set_root_state(
-            pos=root_pos,
-            quat=root_quat,
-            lin_vel=root_lin_vel,
-            ang_vel=root_ang_vel,
-            env_ids=env_ids
-        )
-
-        self.robot.set_joint_state(
-            joint_pos=joint_pos,
-            joint_vel=joint_vel,
-            env_ids=env_ids
-        )
+        self.robot.write_root_pos_to_sim(pos=root_pos, env_ids=env_ids)
+        self.robot.write_root_quat_to_sim(quat=root_quat, env_ids=env_ids)
+        self.robot.write_root_lin_vel_to_sim(lin_vel=root_lin_vel, env_ids=env_ids)
+        self.robot.write_root_ang_vel_to_sim(ang_vel=root_ang_vel, env_ids=env_ids)
+        self.robot.write_joint_pos_to_sim(joint_pos=joint_pos, env_ids=env_ids)
+        self.robot.write_joint_vel_to_sim(joint_vel=joint_vel, env_ids=env_ids)
 
     # ===== Implement Abstract Methods =====
 

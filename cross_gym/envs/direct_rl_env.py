@@ -124,12 +124,14 @@ class DirectRLEnv(VecEnv):
         # Update episode length
         self.episode_length_buf.add_(1)
 
-        # Compute MDP components (user implements)
+        # Compute rewards
         reward_buf = self.compute_rewards()
+
+        # Check terminations
         self.check_terminations()
         self.reset_buf[:] = self.reset_terminated | self.reset_truncated
 
-        # Auto-reset
+        # Reset envs
         reset_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(reset_ids) > 0:
             self._reset_idx(reset_ids)
@@ -168,6 +170,8 @@ class DirectRLEnv(VecEnv):
         # Reset counters
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = False
+        self.reset_terminated[env_ids] = False
+        self.reset_truncated[env_ids] = False
 
     def render(self):
         """Render the environment."""

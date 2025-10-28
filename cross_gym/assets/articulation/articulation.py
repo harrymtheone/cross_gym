@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import torch
 
@@ -214,27 +214,19 @@ class Articulation(AssetBase):
 
             print(f"[Articulation] Actuator '{actuator_name}': {len(joint_ids)} joints")
 
-    def reset(self, env_ids: torch.Tensor | None = None):
-        """Reset articulation state for specified environments.
-        
-        Args:
-            env_ids: Environment IDs to reset. If None, reset all.
-        """
+    def reset(self, env_ids: Sequence[int] | None = None):
+        # use ellipses object to skip initial indices.
         if env_ids is None:
-            env_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
+            env_ids = slice(None)
 
-        # Reset to default state
-        root_pos = self.data.default_root_pos[env_ids]
-        root_quat = self.data.default_root_quat[env_ids]
-        root_lin_vel = self.data.default_root_lin_vel[env_ids]
-        root_ang_vel = self.data.default_root_ang_vel[env_ids]
-        
-        joint_pos = self.data.default_joint_pos[env_ids]
-        joint_vel = self.data.default_joint_vel[env_ids]
+        # reset actuators
+        for actuator in self.actuators.values():
+            actuator.reset(env_ids)
 
-        # Write to simulation
-        self._backend.set_root_state(root_pos, root_quat, root_lin_vel, root_ang_vel, env_ids)
-        self._backend.set_joint_state(joint_pos, joint_vel, env_ids)
+        # TODO: reset external wrench
+        # self._external_force_b[env_ids] = 0.0
+        # self._external_torque_b[env_ids] = 0.0
+        # self._external_wrench_positions_b[env_ids] = 0.0
 
     def update(self, dt: float):
         """Update articulation state from simulation.
@@ -294,41 +286,127 @@ class Articulation(AssetBase):
             self.data.computed_torque[:, actuator.dof_indices] = actuator.computed_torque
             self.data.applied_torque[:, actuator.dof_indices] = actuator.applied_torque
 
-    # ========== State Setters (for customizing reset behavior) ==========
+    # ========== State Setters ==========
 
-    def set_root_state(
-            self, 
-            pos: torch.Tensor | None = None,
-            quat: torch.Tensor | None = None,
-            lin_vel: torch.Tensor | None = None,
-            ang_vel: torch.Tensor | None = None,
-            env_ids: torch.Tensor | None = None
+    def write_root_pos_to_sim(
+            self,
+            pos: torch.Tensor,
+            env_ids: Sequence[int] | None = None
     ):
-        """Set root state in simulation.
-
+        """Write root position to simulation.
+        
         Args:
             pos: Root positions (num_resets, 3).
+            env_ids: Environment IDs. If None, apply to all.
+        """
+        if env_ids is None:
+            env_ids = slice(None)
+        
+        # Update data buffer
+        self.data.root_pos_w[env_ids] = pos
+        
+        # Write to simulation
+        self._backend.set_root_state(root_pos=pos, env_ids=env_ids)
+
+    def write_root_quat_to_sim(
+            self,
+            quat: torch.Tensor,
+            env_ids: Sequence[int] | None = None
+    ):
+        """Write root orientation to simulation.
+        
+        Args:
             quat: Root orientations as quaternions (num_resets, 4) - (w, x, y, z).
+            env_ids: Environment IDs. If None, apply to all.
+        """
+        if env_ids is None:
+            env_ids = slice(None)
+        
+        # Update data buffer
+        self.data.root_quat_w[env_ids] = quat
+        
+        # Write to simulation
+        self._backend.set_root_state(root_quat=quat, env_ids=env_ids)
+
+    def write_root_lin_vel_to_sim(
+            self,
+            lin_vel: torch.Tensor,
+            env_ids: Sequence[int] | None = None
+    ):
+        """Write root linear velocity to simulation.
+        
+        Args:
             lin_vel: Root linear velocities (num_resets, 3).
+            env_ids: Environment IDs. If None, apply to all.
+        """
+        if env_ids is None:
+            env_ids = slice(None)
+        
+        # Update data buffer
+        self.data.root_lin_vel_w[env_ids] = lin_vel
+        
+        # Write to simulation
+        self._backend.set_root_state(root_lin_vel=lin_vel, env_ids=env_ids)
+
+    def write_root_ang_vel_to_sim(
+            self,
+            ang_vel: torch.Tensor,
+            env_ids: Sequence[int] | None = None
+    ):
+        """Write root angular velocity to simulation.
+        
+        Args:
             ang_vel: Root angular velocities (num_resets, 3).
             env_ids: Environment IDs. If None, apply to all.
         """
-        self._backend.set_root_state(pos, quat, lin_vel, ang_vel, env_ids)
+        if env_ids is None:
+            env_ids = slice(None)
+        
+        # Update data buffer
+        self.data.root_ang_vel_w[env_ids] = ang_vel
+        
+        # Write to simulation
+        self._backend.set_root_state(root_ang_vel=ang_vel, env_ids=env_ids)
 
-    def set_joint_state(
+    def write_joint_pos_to_sim(
             self,
-            joint_pos: torch.Tensor | None = None,
-            joint_vel: torch.Tensor | None = None,
-            env_ids: torch.Tensor | None = None
+            joint_pos: torch.Tensor,
+            env_ids: Sequence[int] | None = None
     ):
-        """Set joint state in simulation.
-
+        """Write joint positions to simulation.
+        
         Args:
             joint_pos: Joint positions (num_resets, num_dof).
+            env_ids: Environment IDs. If None, apply to all.
+        """
+        if env_ids is None:
+            env_ids = slice(None)
+        
+        # Update data buffer
+        self.data.dof_pos[env_ids] = joint_pos
+        
+        # Write to simulation
+        self._backend.set_joint_state(joint_pos=joint_pos, env_ids=env_ids)
+
+    def write_joint_vel_to_sim(
+            self,
+            joint_vel: torch.Tensor,
+            env_ids: Sequence[int] | None = None
+    ):
+        """Write joint velocities to simulation.
+        
+        Args:
             joint_vel: Joint velocities (num_resets, num_dof).
             env_ids: Environment IDs. If None, apply to all.
         """
-        self._backend.set_joint_state(joint_pos, joint_vel, env_ids)
+        if env_ids is None:
+            env_ids = slice(None)
+        
+        # Update data buffer
+        self.data.dof_vel[env_ids] = joint_vel
+        
+        # Write to simulation
+        self._backend.set_joint_state(joint_vel=joint_vel, env_ids=env_ids)
 
     # ========== DOF Command Methods ==========
 

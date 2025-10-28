@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Sequence
 
 import torch
 
@@ -147,6 +148,6 @@ class ActuatorBase(ABC):
         pass
 
     @abstractmethod
-    def reset(self, env_ids: torch.Tensor):
+    def reset(self, env_ids: Sequence[int] | None = None):
         """Reset actuator state for given environments."""
         pass
