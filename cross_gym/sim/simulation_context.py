@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
+from cross_gym.terrains import TerrainGenerator
 from . import ArticulationView
 
 if TYPE_CHECKING:
@@ -132,6 +133,46 @@ class SimulationContext(ABC):
     @abstractmethod
     def render(self):
         """Render the current scene."""
+        pass
+
+    # ========== Asset Spawning (Must be implemented by backends) ==========
+
+    @abstractmethod
+    def add_terrain_to_sim(self, terrain: TerrainGenerator):
+        """Add terrain to simulation (BEFORE creating envs).
+        
+        Args:
+            terrain: Terrain generator
+        """
+        pass
+
+    @abstractmethod
+    def load_urdf_asset(self, urdf_path: str, cfg):
+        """Load URDF as asset (called once, reused across envs).
+        
+        Args:
+            urdf_path: Path to URDF file
+            cfg: Articulation configuration
+            
+        Returns:
+            Gym asset handle
+        """
+        pass
+
+    @abstractmethod
+    def create_envs_with_actors(self, num_envs: int, assets_to_spawn: dict, spacing: float = 2.0):
+        """Create environments and add actors (per-env creation required by Isaac Gym).
+        
+        Args:
+            num_envs: Number of environments
+            assets_to_spawn: Dict mapping (prim_path, cfg) -> asset
+            spacing: Environment spacing
+        """
+        pass
+
+    @abstractmethod
+    def prepare_sim(self):
+        """Prepare simulation after spawning (allocate buffers)."""
         pass
 
     # ========== Scene Management ==========

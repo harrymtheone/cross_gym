@@ -7,7 +7,7 @@ from typing import Any, TYPE_CHECKING
 import torch
 
 from cross_gym.assets import AssetBase, Articulation, ArticulationCfg
-from cross_gym.sensors import SensorBaseCfg
+from cross_gym.sensors import SensorBase, SensorBaseCfg
 from cross_gym.sim import SimulationContext
 from cross_gym.terrains import TerrainGenerator, TerrainGeneratorCfg
 from . import MeshRegistry
@@ -65,7 +65,7 @@ class InteractiveScene:
         # Containers for different asset types
         self.articulations: dict[str, Articulation] = {}
         self.rigid_objects: dict[str, Any] = {}  # RigidObject not implemented yet
-        self.sensors: dict[str, Any] = {}  # Sensors not implemented yet
+        self.sensors: dict[str, SensorBase] = {}  # Sensors not implemented yet
         self.terrain: TerrainGenerator | None = None  # Terrain not implemented yet
 
         # Environment info
@@ -74,14 +74,13 @@ class InteractiveScene:
         # Create mesh registry for sharing meshes between terrain and sensors
         self.mesh_registry = MeshRegistry(device=self.sim.device)
 
-        # Parse configuration and create assets
+        # Parse configuration and create assets (creates Python objects, doesn't spawn yet)
         self._parse_cfg()
 
-        # Clone environments (if more than one)
-        if self.num_envs > 1:
-            self._clone_environments()
+        # Spawn assets into simulation (loads URDFs, creates actors)
+        self._spawn_assets()
 
-        # Initialize all assets
+        # Initialize all assets (creates views to access tensors)
         self._initialize_assets()
 
     def _parse_cfg(self):
@@ -102,7 +101,7 @@ class InteractiveScene:
                 print(f"[Scene] Created terrain: {name}")
 
         if self.terrain is None:
-            raise RuntimeError("No terrain created in the scene. Make sure terrain configuration is availalbe.")
+            raise RuntimeError("No terrain created in the scene. Make sure terrain configuration is available.")
 
         # Create articulations
         for name, cfg in self.cfg.__dict__.items():
@@ -123,13 +122,41 @@ class InteractiveScene:
                 )
 
             parent_articulation = self.articulations[cfg.articulation_name]
-
-            self.sensors[name] = cfg.class_type(
-                cfg,
-                articulation=parent_articulation,
-            )
+            self.sensors[name] = cfg.class_type(cfg, articulation=parent_articulation)
 
             print(f"[Scene] Created sensor: {name} (attached to {cfg.articulation_name}/{cfg.body_name})")
+
+    def _spawn_assets(self):
+        """Spawn all assets into simulation.
+        
+        This must be called after _parse_cfg() and before _initialize_assets().
+        
+        Isaac Gym requires this specific order:
+        1. Add terrain to sim (GLOBAL, before envs)
+        2. Load URDF assets (once, reused)
+        3. Create envs and add actors (interleaved per-env)
+        4. Prepare simulation (allocate buffers)
+        """
+        # Step 1: Add terrain to sim (BEFORE creating envs)
+        if self.terrain is not None:
+            self.sim.add_terrain_to_sim(self.terrain)
+
+        # Step 2: Load all URDF assets (once, will be reused across envs)
+        assets_to_spawn = {}
+        for name, articulation in self.articulations.items():
+            if articulation.cfg.file is not None:
+                asset = self.sim.load_urdf_asset(
+                    urdf_path=articulation.cfg.file,
+                    cfg=articulation.cfg
+                )
+                # Store with (prim_path, cfg) as key for env creation
+                assets_to_spawn[(articulation.cfg.prim_path, articulation.cfg)] = asset
+
+        # Step 3: Create envs and add actors (Isaac Gym requires per-env interleaving)
+        self.sim.create_envs_with_actors(self.num_envs, assets_to_spawn, spacing=2.0)
+
+        # Step 4: Prepare simulation (allocate physics buffers)
+        self.sim.prepare_sim()
 
     def _clone_environments(self):
         """Clone assets across multiple environments.
@@ -152,7 +179,7 @@ class InteractiveScene:
             articulation.initialize(env_ids, self.num_envs)
 
         # TODO: Initialize rigid objects
-        
+
         # Sensors initialize lazily on first data access (no explicit initialization needed)
 
     def reset(self, env_ids: torch.Tensor | None = None):

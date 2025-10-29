@@ -9,6 +9,8 @@ from . import IsaacGymRigidObjectView, IsaacGymArticulationView
 
 if TYPE_CHECKING:
     from . import IsaacGymCfg
+    from cross_gym.assets import ArticulationCfg
+    from cross_gym.terrains import TerrainGenerator
 
 try:
     from isaacgym import gymapi, gymutil  # noqa
@@ -97,6 +99,11 @@ class IsaacGymContext(SimulationContext):
         self.viewer = None
         if not self.cfg.headless:
             self._create_viewer()
+        
+        # Asset spawning storage
+        self.envs = []  # Environment handles
+        self.actors = {}  # Actor handles by name
+        self._assets = {}  # Loaded gym assets
 
     def _create_viewer(self):
         """Create viewer for visualization."""
@@ -108,6 +115,140 @@ class IsaacGymContext(SimulationContext):
         cam_pos = gymapi.Vec3(5.0, 5.0, 3.0)
         cam_target = gymapi.Vec3(0.0, 0.0, 0.0)
         self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+
+    # ========== Asset Spawning ==========
+
+    def add_terrain_to_sim(self, terrain: TerrainGenerator):
+        """Add terrain as global trimesh to simulation (BEFORE creating envs).
+        
+        Args:
+            terrain: Terrain generator with global trimesh
+        """
+        import numpy as np
+        
+        # Get trimesh data
+        vertices = np.array(terrain.mesh.vertices, dtype=np.float32)
+        triangles = np.array(terrain.mesh.faces, dtype=np.uint32)
+        
+        # Create triangle mesh parameters
+        tm_params = gymapi.TriangleMeshParams()
+        tm_params.nb_vertices = vertices.shape[0]
+        tm_params.nb_triangles = triangles.shape[0]
+        tm_params.transform.p = gymapi.Vec3(0, 0, 0)
+        tm_params.static_friction = 1.0
+        tm_params.dynamic_friction = 1.0
+        tm_params.restitution = 0.0
+        
+        # Add terrain to SIM (global, not per-env)
+        self.gym.add_triangle_mesh(
+            self.sim,
+            vertices.flatten().tolist(),
+            triangles.flatten().tolist(),
+            tm_params
+        )
+        
+        print(f"[IsaacGym] Added terrain to sim ({vertices.shape[0]} vertices, {triangles.shape[0]} faces)")
+
+    def load_urdf_asset(self, urdf_path: str, cfg: ArticulationCfg):
+        """Load URDF as gym asset (called once, reused across envs).
+        
+        Args:
+            urdf_path: Path to URDF file
+            cfg: Articulation configuration
+            
+        Returns:
+            Gym asset handle
+        """
+        import os
+        
+        # Configure asset options
+        asset_options = gymapi.AssetOptions()
+        asset_options.fix_base_link = cfg.asset_options.fix_base_link
+        asset_options.collapse_fixed_joints = cfg.asset_options.collapse_fixed_joints
+        asset_options.replace_cylinder_with_capsule = cfg.asset_options.replace_cylinder_with_capsule
+        asset_options.flip_visual_attachments = cfg.asset_options.flip_visual_attachments
+        asset_options.default_dof_drive_mode = cfg.asset_options.default_dof_drive_mode
+        asset_options.density = cfg.asset_options.density
+        asset_options.angular_damping = cfg.asset_options.angular_damping
+        asset_options.linear_damping = cfg.asset_options.linear_damping
+        asset_options.max_angular_velocity = cfg.asset_options.max_angular_velocity
+        asset_options.max_linear_velocity = cfg.asset_options.max_linear_velocity
+        asset_options.armature = cfg.asset_options.armature
+        asset_options.thickness = cfg.asset_options.thickness
+        asset_options.disable_gravity = cfg.asset_options.disable_gravity
+        
+        # Load URDF
+        asset = self.gym.load_asset(
+            self.sim,
+            os.path.dirname(urdf_path),
+            os.path.basename(urdf_path),
+            asset_options
+        )
+        
+        print(f"[IsaacGym] Loaded URDF asset: {os.path.basename(urdf_path)}")
+        return asset
+
+    def create_envs_with_actors(self, num_envs: int, assets_to_spawn: dict, spacing: float = 2.0):
+        """Create environments and add actors (Isaac Gym requires per-env creation).
+        
+        Args:
+            num_envs: Number of environments
+            assets_to_spawn: Dict mapping (prim_path, cfg) -> gym_asset
+            spacing: Environment spacing
+        """
+        import numpy as np
+        import math
+        
+        # Compute grid
+        num_per_row = int(math.sqrt(num_envs))
+        
+        # Environment bounds
+        lower = gymapi.Vec3(-spacing, -spacing, 0.0)
+        upper = gymapi.Vec3(spacing, spacing, spacing)
+        
+        # Create each env and immediately add all actors to it
+        self.envs = []
+        self.actors = {prim_path: [] for prim_path in assets_to_spawn.keys()}
+        
+        for env_id in range(num_envs):
+            # Create environment
+            env_handle = self.gym.create_env(self.sim, lower, upper, num_per_row)
+            self.envs.append(env_handle)
+            
+            # Add all actors to THIS env before creating next env
+            for (prim_path, cfg), asset in assets_to_spawn.items():
+                # Initial pose
+                initial_pose = gymapi.Transform()
+                initial_pose.p = gymapi.Vec3(*cfg.init_state.pos)
+                initial_pose.r = gymapi.Quat(
+                    cfg.init_state.rot[1],  # x
+                    cfg.init_state.rot[2],  # y
+                    cfg.init_state.rot[3],  # z
+                    cfg.init_state.rot[0]   # w
+                )
+                
+                # Extract actor name
+                actor_name = prim_path.split('/')[-1].replace('.*', '')
+                
+                # Create actor in this env
+                actor_handle = self.gym.create_actor(
+                    env_handle,
+                    asset,
+                    initial_pose,
+                    actor_name,
+                    env_id,  # Collision group
+                    cfg.collision_group,  # Collision filter
+                    0  # Segmentation ID
+                )
+                
+                self.actors[prim_path].append(actor_handle)
+        
+        print(f"[IsaacGym] Created {num_envs} environments with actors ({num_per_row}x{num_per_row} grid)")
+
+    def prepare_sim(self):
+        """Prepare simulation after spawning all assets."""
+        self.gym.prepare_sim(self.sim)
+        print(f"[IsaacGym] Simulation prepared (physics buffers allocated)")
 
     def reset(self):
         """Reset the simulation."""
