@@ -53,15 +53,15 @@ class TaskCfg:
     # ========== Environment ==========
     env: ManagerBasedRLEnvCfg = MISSING
     """Environment configuration."""
-    
+
     # ========== Algorithm ==========
     algorithm: PPOCfg = MISSING
     """Algorithm configuration (PPOCfg from cross_gym_rl)."""
-    
+
     # ========== Runner ==========
     runner: OnPolicyRunnerCfg = MISSING
     """Runner configuration (OnPolicyRunnerCfg from cross_gym_rl)."""
-    
+
     def __post_init__(self):
         """Post-initialization to link configs.
         

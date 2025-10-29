@@ -90,6 +90,30 @@ class Articulation(AssetBase):
         
         return indices
 
+    def find_joints(self, name_patterns: str | list[str]) -> list[int]:
+        """Find joint indices matching regex patterns.
+        
+        Args:
+            name_patterns: Single regex pattern or list of regex patterns
+            
+        Returns:
+            List of joint indices matching any of the patterns
+            
+        Example:
+            >>> leg_joints = robot.find_joints([".*_hip.*", ".*_knee.*"])
+            >>> waist_joint = robot.find_joints("Waist")
+        """
+        if isinstance(name_patterns, str):
+            name_patterns = [name_patterns]
+        
+        indices = []
+        for pattern in name_patterns:
+            for i, dof_name in enumerate(self.dof_names):
+                if re.search(pattern, dof_name) and i not in indices:
+                    indices.append(i)
+        
+        return indices
+
     def initialize(self, env_ids: torch.Tensor, num_envs: int):
         """Initialize articulation after environments are created.
         

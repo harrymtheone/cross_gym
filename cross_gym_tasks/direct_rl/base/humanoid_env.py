@@ -15,9 +15,10 @@ from typing import TYPE_CHECKING
 import torch
 
 from cross_gym.utils import math as math_utils
+from . import ParkourEnv
 
 if TYPE_CHECKING:
-    from . import HumanoidEnvCfg, ParkourEnv
+    from . import HumanoidEnvCfg
 
 
 class HumanoidEnv(ParkourEnv, ABC):
@@ -128,14 +129,7 @@ class HumanoidEnv(ParkourEnv, ABC):
         # Reset feet velocities
         self.last_feet_vel_xy[env_ids] = 0.
 
-    def pre_physics_step(self, actions: torch.Tensor):
-        """Process actions before physics step.
-        
-        Args:
-            actions: Action tensor
-        """
-        super().pre_physics_step(actions)
-
+    def _post_physics_step(self):
         # Update gait phase
         if self.cfg.gait is not None:
             self.phase_length_buf.add_(self.dt)
@@ -160,6 +154,8 @@ class HumanoidEnv(ParkourEnv, ABC):
         #             alpha * self.feet_air_time_avg[first_contact] +
         #             (1 - alpha) * self.feet_air_time[first_contact]
         #     )
+
+        super()._post_physics_step()
 
     def post_physics_step(self):
         """Update state after physics step."""

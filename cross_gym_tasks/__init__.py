@@ -15,7 +15,4 @@ Usage:
 from .task_cfg import TaskCfg
 from .task_registry import TaskRegistry
 
-from . import direct_rl
-from . import manager_based_rl
-
-__version__ = "0.1.0"
+from .direct_rl import direct_tasks

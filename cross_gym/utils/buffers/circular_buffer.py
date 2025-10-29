@@ -3,8 +3,11 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-import torch
+from __future__ import annotations
+
 from collections.abc import Sequence
+
+import torch
 
 
 class CircularBuffer:

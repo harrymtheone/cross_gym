@@ -181,7 +181,7 @@ class HumanoidEnvCfg(ParkourEnvCfg):
     """Configuration for humanoid environment."""
 
     @configclass
-    class HumanoidAssetCfg:
+    class AssetCfg:
         """Humanoid-specific asset configuration."""
 
         foot_name: str = ".*foot"
@@ -209,27 +209,11 @@ class HumanoidEnvCfg(ParkourEnvCfg):
         phase_offset_r: float = 0.5
         """Phase offset for right leg [0, 1] (typically 0.5 for alternating gait)."""
 
-    @configclass
-    class HumanoidTerrainCfg(ParkourEnvCfg.TerrainCfg):
-        """Humanoid terrain configuration."""
-
-        foothold_pts: tuple[tuple[float, float, int], tuple[float, float, int], float] = (
-            (-0.05, 0.05, 3),  # x: -5cm to +5cm, 3 points
-            (-0.05, 0.05, 3),  # y: -5cm to +5cm, 3 points
-            -0.02,  # z shift: -2cm below foot center
-        )
-        """Foothold detection grid: ((x_min, x_max, x_res), (y_min, y_max, y_res), z_shift)."""
-
-        foothold_contact_thresh: float = 0.01
-        """Height threshold for foothold contact detection (m)."""
-
     class_type: type = HumanoidEnv
 
-    asset: HumanoidAssetCfg = HumanoidAssetCfg()
+    asset: AssetCfg = AssetCfg()
 
     contact_force_threshold: float = 2.0
     """Force threshold for contact detection (N)."""
 
     gait: GaitCfg = None
-
-    terrain: HumanoidTerrainCfg = HumanoidTerrainCfg()

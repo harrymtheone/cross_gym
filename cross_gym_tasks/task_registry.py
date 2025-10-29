@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import argparse
+
 from . import TaskCfg
 
 
@@ -9,26 +11,74 @@ class TaskRegistry:
     """Registry for creating RL training components.
     
     Usage:
-        1. Create task config (contains env + algorithm + runner settings)
-        2. Pass to TaskRegistry(task_cfg)
-        3. Call make() to get runner (env and algorithm are created and passed to runner)
-        4. Call runner.learn()
+        1. Create task config
+        2. Pass config and args to TaskRegistry
+        3. Registry applies args overrides
+        4. Call make() to get runner
     
     Example:
-        >>> task_cfg = LocomotionTaskCfg()
-        >>> task_registry = TaskRegistry(task_cfg)
-        >>> runner = task_registry.make()
+        >>> task_cfg = T1DreamWaqCfg()
+        >>> registry = TaskRegistry(task_cfg, args)
+        >>> runner = registry.make()
         >>> runner.learn()
     """
 
-    def __init__(self, task_cfg: TaskCfg):
-        """Initialize task registry with task configuration.
+    def __init__(self, task_cfg: TaskCfg, args: argparse.Namespace | None = None):
+        """Initialize task registry with task configuration and args.
         
         Args:
             task_cfg: Complete task configuration
+            args: Command-line arguments (optional, for overrides)
         """
+        # Apply command-line overrides if args provided
+        if args is not None:
+            self._apply_args_overrides(task_cfg, args)
+        
         task_cfg.validate()  # noqa
         self.cfg = task_cfg
+
+    def _apply_args_overrides(self, task_cfg: TaskCfg, args: argparse.Namespace):
+        """Apply command-line argument overrides to task config.
+        
+        Args:
+            task_cfg: Task configuration to modify
+            args: Parsed command-line arguments
+        """
+        # Device override
+        if hasattr(args, 'device') and args.device is not None:
+            task_cfg.env.sim.device = args.device
+
+        # Headless mode
+        if hasattr(args, 'headless') and args.headless:
+            task_cfg.env.sim.headless = True
+
+        # Debug mode: reduce complexity
+        if hasattr(args, 'debug') and args.debug:
+            print("[DEBUG MODE] Reducing environment complexity for faster iteration...")
+            task_cfg.env.scene.num_envs = 16
+
+            # Reduce terrain size if present
+            if hasattr(task_cfg.env.scene, 'terrain') and task_cfg.env.scene.terrain is not None:
+                task_cfg.env.scene.terrain.num_rows = 5
+                task_cfg.env.scene.terrain.num_cols = 5
+
+            # Disable logger in debug
+            if hasattr(task_cfg, 'runner') and hasattr(task_cfg.runner, 'logger_backend'):
+                task_cfg.runner.logger_backend = None
+
+        # Experiment tracking
+        if hasattr(args, 'proj_name'):
+            task_cfg.project_name = args.proj_name
+        if hasattr(args, 'exptid'):
+            task_cfg.experiment_name = args.exptid
+        if hasattr(args, 'log_dir'):
+            task_cfg.log_root_dir = args.log_root
+
+        # Resume from checkpoint
+        if hasattr(args, 'resumeid') and args.resumeid is not None:
+            task_cfg.resume_id = args.resumeid
+            if hasattr(args, 'checkpoint') and args.checkpoint is not None:
+                task_cfg.checkpoint = args.checkpoint
 
     def make(self):
         """Create runner with env and algorithm.
@@ -71,10 +121,4 @@ class TaskRegistry:
         Returns:
             Environment instance
         """
-        # validate() already checked that class_type exists
-        env = self.cfg.env.class_type(self.cfg.env)
-
-        return env
-
-
-__all__ = ["TaskRegistry"]
+        return self.cfg.env.class_type(self.cfg.env)
