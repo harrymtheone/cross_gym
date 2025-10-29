@@ -16,14 +16,14 @@ class TaskCfg:
     
     A task config contains:
     1. env - Environment configuration
-    2. algorithm - Algorithm configuration (from cross_gym_rl)
-    3. runner - Runner configuration (from cross_gym_rl)
+    2. algorithm - Algorithm configuration (from cross_rl)
+    3. runner - Runner configuration (from cross_rl)
     
     Everything needed for training in one unified config!
     
     Example:
-        >>> from cross_gym_rl.algorithms.ppo import PPOCfg
-        >>> from cross_gym_rl.runners import OnPolicyRunnerCfg
+        >>> from cross_rl.algorithms.ppo import PPOCfg
+        >>> from cross_rl.runners import OnPolicyRunnerCfg
         >>> 
         >>> @configclass
         >>> class MyTaskCfg(TaskCfg):
@@ -41,7 +41,7 @@ class TaskCfg:
         >>>     )
         >>> 
         >>> # Use with TaskRegistry
-        >>> from cross_gym_tasks import TaskRegistry
+        >>> from cross_tasks import TaskRegistry
         >>> task_registry = TaskRegistry(MyTaskCfg())
         >>> runner = task_registry.make()
         >>> runner.learn()
@@ -53,11 +53,11 @@ class TaskCfg:
 
     # ========== Algorithm ==========
     algorithm: PPOCfg = MISSING
-    """Algorithm configuration (PPOCfg from cross_gym_rl)."""
+    """Algorithm configuration (PPOCfg from cross_rl)."""
 
     # ========== Runner ==========
     runner: OnPolicyRunnerCfg = MISSING
-    """Runner configuration (OnPolicyRunnerCfg from cross_gym_rl)."""
+    """Runner configuration (OnPolicyRunnerCfg from cross_rl)."""
 
     def __post_init__(self):
         """Post-initialization to link configs.

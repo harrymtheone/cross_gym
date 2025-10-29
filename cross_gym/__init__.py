@@ -1,4 +1,4 @@
-"""Cross-Gym: A cross-platform robot reinforcement cross_gym_rl framework.
+"""Cross-Gym: A cross-platform robot reinforcement cross_rl framework.
 
 Cross-Gym provides a unified interface for robot RL across multiple simulators
 (IsaacGym, Genesis, IsaacSim) with an architecture inspired by IsaacLab.

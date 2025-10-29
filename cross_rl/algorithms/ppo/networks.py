@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Sequence
 
 import torch
 import torch.nn as nn
@@ -48,8 +48,8 @@ class ActorCritic(nn.Module):
             self,
             obs_shape: Dict[str, tuple],
             action_dim: int,
-            actor_hidden_dims: List[int] = [256, 256, 128],
-            critic_hidden_dims: List[int] = [256, 256, 128],
+            actor_hidden_dims: Sequence[int],
+            critic_hidden_dims: Sequence[int],
             activation: str = 'elu',
             init_noise_std: float = 1.0,
     ):

@@ -67,7 +67,7 @@ class PPOCfg(AlgorithmBaseCfg):
     """Learning rate schedule type."""
 
     desired_kl: Optional[float] = 0.01
-    """Desired KL divergence for adaptive cross_gym_rl rate (None = disabled)."""
+    """Desired KL divergence for adaptive cross_rl rate (None = disabled)."""
 
     # ========== Training Settings ==========
     max_grad_norm: Optional[float] = 1.0

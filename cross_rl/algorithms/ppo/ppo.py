@@ -188,7 +188,7 @@ class PPO(AlgorithmBase):
         if mean_kl > 0:
             mean_kl /= num_updates
 
-        # Adaptive cross_gym_rl rate
+        # Adaptive cross_rl rate
         if self.cfg.learning_rate_schedule == 'adaptive' and self.cfg.desired_kl is not None:
             if mean_kl > self.cfg.desired_kl * 2.0:
                 self.learning_rate = max(1e-5, self.learning_rate / 1.5)
@@ -242,7 +242,7 @@ class PPO(AlgorithmBase):
         actions_log_prob = self.actor_critic.get_actions_log_prob(actions)
         entropy = self.actor_critic.entropy
 
-        # Compute KL divergence for adaptive cross_gym_rl rate
+        # Compute KL divergence for adaptive cross_rl rate
         kl = 0
         if self.cfg.learning_rate_schedule == 'adaptive':
             with torch.no_grad():

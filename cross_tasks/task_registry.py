@@ -73,7 +73,7 @@ class TaskRegistry:
         if hasattr(args, 'exptid'):
             task_cfg.experiment_name = args.exptid
         if hasattr(args, 'log_dir'):
-            task_cfg.log_root_dir = args.log_root
+            task_cfg.log_root_dir = args.log_dir
 
         # Resume from checkpoint
         if hasattr(args, 'resumeid') and args.resumeid is not None:

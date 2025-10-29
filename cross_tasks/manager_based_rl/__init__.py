@@ -1,4 +1,4 @@
-"""Manager-based RL cross_gym_tasks.
+"""Manager-based RL cross_tasks.
 
 Tasks defined using Cross-Gym's manager-based workflow.
 Each task is a configuration class that defines:
@@ -6,13 +6,13 @@ Each task is a configuration class that defines:
 - Scene (robots, terrain, etc.)
 - Observations, actions, rewards, terminations
 
-Example cross_gym_tasks:
+Example cross_tasks:
 - Locomotion
 - Manipulation
 - Navigation
 """
 
-# Import your cross_gym_tasks here
+# Import your cross_tasks here
 # from .locomotion import LocomotionTaskCfg
 # from .manipulation import ManipulationTaskCfg
 

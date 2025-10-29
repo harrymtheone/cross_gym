@@ -47,7 +47,7 @@ class ManagerBasedEnvCfg:
     """
 
     is_finite_horizon: bool = False
-    """Whether the cross_gym_rl task is treated as a finite or infinite horizon problem.
+    """Whether the cross_rl task is treated as a finite or infinite horizon problem.
     
     This affects how terminal states are handled in RL algorithms.
     """

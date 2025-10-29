@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import MISSING
+
 from cross_gym.utils import configclass
 from cross_gym_tasks import TaskCfg
 from cross_gym_tasks.direct_rl.base import HumanoidEnvCfg, ParkourEnvCfg
+from cross_gym.sim.isaacgym import IsaacGymCfg
+from cross_gym.scene import InteractiveSceneCfg
+from cross_gym.assets import ArticulationCfg
+from cross_gym.terrains import TerrainGeneratorCfg
 from . import T1DreamWaqEnv
 
 
@@ -17,6 +23,22 @@ class T1DreamWaqEnvCfg(HumanoidEnvCfg):
     """Environment configuration for T1 DreamWAQ."""
 
     class_type: type = T1DreamWaqEnv
+
+    # ========== Simulation ==========
+    sim: IsaacGymCfg = IsaacGymCfg(
+        dt=0.005,
+        substeps=1,
+        device='cuda:0',
+        headless=False
+    )
+
+    # ========== Scene ==========
+    # NOTE: Scene robot and terrain configs should be provided when instantiating the task
+    # For now, we provide a minimal placeholder structure
+    scene: InteractiveSceneCfg = MISSING  # TODO: Provide scene with robot + terrain
+
+    # ========== Control ==========
+    decimation: int = 4  # Simulation steps per environment step
 
     # ========== Actions ==========
     num_actions: int = 13  # T1 has 13 actuated DOFs
@@ -192,11 +214,11 @@ class T1DreamWaqCfg(TaskCfg):
     # Environment
     env: T1DreamWaqEnvCfg = T1DreamWaqEnvCfg()
 
-    # Algorithm (PPO) - TODO: Fill with actual PPO config
-    # algorithm: PPOCfg = PPOCfg(...)
+    # Algorithm (PPO) - TODO: Fill with actual PPO config when cross_rl is ready
+    algorithm = MISSING  # from cross_rl.algorithms.ppo import PPOCfg
 
-    # Runner - TODO: Fill with actual runner config
-    # runner: OnPolicyRunnerCfg = OnPolicyRunnerCfg(...)
+    # Runner - TODO: Fill with actual runner config when cross_rl is ready
+    runner = MISSING  # from cross_rl.runners import OnPolicyRunnerCfg
 
 
 __all__ = ["T1DreamWaqEnvCfg", "T1DreamWaqCfg"]
