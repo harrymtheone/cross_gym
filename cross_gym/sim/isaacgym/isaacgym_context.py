@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cross_gym.sim import SimulationContext
+from cross_gym.sim import SimulationContext, ArticulationView
+from cross_gym.terrains import TerrainGenerator, TerrainGeneratorCfg
 from . import IsaacGymRigidObjectView, IsaacGymArticulationView
 
 if TYPE_CHECKING:
     from . import IsaacGymCfg
     from cross_gym.assets import ArticulationCfg
-    from cross_gym.terrains import TerrainGenerator
+    from cross_gym.scene import InteractiveSceneCfg
 
 try:
     from isaacgym import gymapi, gymutil  # noqa
@@ -249,6 +250,103 @@ class IsaacGymContext(SimulationContext):
         """Prepare simulation after spawning all assets."""
         self.gym.prepare_sim(self.sim)
         print(f"[IsaacGym] Simulation prepared (physics buffers allocated)")
+
+    # ========== Scene Building Interface Implementation ==========
+
+    def build_scene(self, scene_cfg: InteractiveSceneCfg):
+        """Build complete scene for IsaacGym.
+        
+        IsaacGym requires specific sequence:
+        1. Add terrain (global, before envs)
+        2. Load URDF assets
+        3. Create envs and add actors (interleaved per-env)
+        4. Prepare sim (allocate buffers)
+        
+        Args:
+            scene_cfg: Scene configuration
+        """
+        import os
+        from cross_gym.assets import ArticulationCfg
+        
+        # Step 1: Create terrain if configured
+        self._terrain = None
+        terrain_cfg = getattr(scene_cfg, 'terrain', None)
+        if terrain_cfg is not None and isinstance(terrain_cfg, TerrainGeneratorCfg):
+            self._terrain = TerrainGenerator(terrain_cfg)
+            self.add_terrain_to_sim(self._terrain)
+            print(f"[IsaacGym] Added terrain to simulation")
+        
+        # Step 2: Load all URDF assets (once, will be reused)
+        assets_to_spawn = {}
+        
+        # Parse scene config for articulations
+        for attr_name in dir(scene_cfg):
+            if attr_name.startswith('_'):
+                continue
+            
+            attr_value = getattr(scene_cfg, attr_name)
+            
+            # Check if it's an ArticulationCfg
+            if isinstance(attr_value, ArticulationCfg):
+                if attr_value.file is not None:
+                    asset_handle = self.load_urdf_asset(
+                        urdf_path=attr_value.file,
+                        cfg=attr_value
+                    )
+                    # Store with prim_path as key
+                    assets_to_spawn[attr_value.prim_path] = (asset_handle, attr_value)
+        
+        # Step 3: Create envs and add actors (IsaacGym interleaved requirement)
+        num_envs = scene_cfg.num_envs
+        env_spacing = getattr(scene_cfg, 'env_spacing', 2.0)
+        self.create_envs_with_actors(num_envs, assets_to_spawn, spacing=env_spacing)
+        
+        # Step 4: Prepare simulation (allocate physics buffers)
+        self.prepare_sim()
+        
+        print(f"[IsaacGym] Scene built successfully with {num_envs} environments")
+
+    def get_terrain(self) -> TerrainGenerator | None:
+        """Get terrain object after scene building.
+        
+        Returns:
+            TerrainGenerator instance if created, None otherwise
+        """
+        return self._terrain
+
+    def get_articulation_view(self, prim_path: str) -> ArticulationView:
+        """Get articulation view by prim path.
+        
+        Args:
+            prim_path: Primitive path of the articulation
+            
+        Returns:
+            IsaacGym articulation view
+            
+        Raises:
+            ValueError: If articulation not found
+        """
+        # Check if this prim_path was spawned
+        if prim_path not in self.actors:
+            available = list(self.actors.keys())
+            raise ValueError(
+                f"Articulation with prim_path '{prim_path}' not found. "
+                f"Available articulations: {available}"
+            )
+        
+        # Create and return view
+        view = IsaacGymArticulationView(
+            gym=self.gym,
+            sim=self.sim,
+            prim_path=prim_path,
+            num_envs=len(self.envs),
+            device=self.device
+        )
+        
+        # Initialize view with actor handles
+        view._actor_handles = self.actors[prim_path]
+        
+        return view
 
     def reset(self):
         """Reset the simulation."""

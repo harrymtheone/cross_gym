@@ -9,7 +9,7 @@ import torch
 
 from cross_gym.actuators import ActuatorCommand, ActuatorBase
 from cross_gym.assets import AssetBase
-from cross_gym.sim import ArticulationView
+from cross_gym.sim import ArticulationView, SimulationContext
 from . import ArticulationData
 
 if TYPE_CHECKING:
@@ -31,11 +31,18 @@ class Articulation(AssetBase):
     def __init__(self, cfg: ArticulationCfg):
         """Initialize articulation.
         
+        Queries simulator for the articulation view (physics representation).
+        Scene must be built before calling this.
+        
         Args:
             cfg: Configuration for the articulation
         """
         super().__init__(cfg)
         self.cfg: ArticulationCfg = cfg
+        
+        # Query simulator for view (scene must be built already)
+        sim = SimulationContext.instance()
+        self._backend = sim.get_articulation_view(cfg.prim_path)
 
     @property
     def num_instances(self) -> int:
@@ -81,13 +88,13 @@ class Articulation(AssetBase):
         """
         if isinstance(name_patterns, str):
             name_patterns = [name_patterns]
-        
+
         indices = []
         for pattern in name_patterns:
             for i, body_name in enumerate(self.body_names):
                 if re.search(pattern, body_name) and i not in indices:
                     indices.append(i)
-        
+
         return indices
 
     def find_joints(self, name_patterns: str | list[str]) -> list[int]:
@@ -105,13 +112,13 @@ class Articulation(AssetBase):
         """
         if isinstance(name_patterns, str):
             name_patterns = [name_patterns]
-        
+
         indices = []
         for pattern in name_patterns:
             for i, dof_name in enumerate(self.dof_names):
                 if re.search(pattern, dof_name) and i not in indices:
                     indices.append(i)
-        
+
         return indices
 
     def initialize(self, env_ids: torch.Tensor, num_envs: int):
@@ -152,30 +159,30 @@ class Articulation(AssetBase):
         self.data.default_root_pos = torch.tensor(
             self.cfg.init_state.pos, device=self.device
         ).unsqueeze(0).repeat(self.num_envs, 1)
-        
+
         self.data.default_root_quat = torch.tensor(
             self.cfg.init_state.rot, device=self.device
         ).unsqueeze(0).repeat(self.num_envs, 1)
-        
+
         self.data.default_root_lin_vel = torch.tensor(
             self.cfg.init_state.lin_vel, device=self.device
         ).unsqueeze(0).repeat(self.num_envs, 1)
-        
+
         self.data.default_root_ang_vel = torch.tensor(
             self.cfg.init_state.ang_vel, device=self.device
         ).unsqueeze(0).repeat(self.num_envs, 1)
-        
+
         # Initialize default joint state to zeros
         self.data.default_joint_pos = torch.zeros(self.num_envs, self.num_dof, device=self.device)
         self.data.default_joint_vel = torch.zeros(self.num_envs, self.num_dof, device=self.device)
-        
+
         # Apply default joint positions from pattern matching
         if self.cfg.init_state.joint_pos:
             for pattern, value in self.cfg.init_state.joint_pos.items():
                 for i, dof_name in enumerate(self.dof_names):
                     if re.search(pattern, dof_name):
                         self.data.default_joint_pos[:, i] = value
-        
+
         # Apply default joint velocities from pattern matching
         if self.cfg.init_state.joint_vel:
             for pattern, value in self.cfg.init_state.joint_vel.items():
@@ -349,10 +356,10 @@ class Articulation(AssetBase):
         """
         if env_ids is None:
             env_ids = slice(None)
-        
+
         # Update data buffer
         self.data.root_pos_w[env_ids] = pos
-        
+
         # Write to simulation
         self._backend.set_root_state(root_pos=pos, env_ids=env_ids)
 
@@ -369,10 +376,10 @@ class Articulation(AssetBase):
         """
         if env_ids is None:
             env_ids = slice(None)
-        
+
         # Update data buffer
         self.data.root_quat_w[env_ids] = quat
-        
+
         # Write to simulation
         self._backend.set_root_state(root_quat=quat, env_ids=env_ids)
 
@@ -389,10 +396,10 @@ class Articulation(AssetBase):
         """
         if env_ids is None:
             env_ids = slice(None)
-        
+
         # Update data buffer
         self.data.root_lin_vel_w[env_ids] = lin_vel
-        
+
         # Write to simulation
         self._backend.set_root_state(root_lin_vel=lin_vel, env_ids=env_ids)
 
@@ -409,10 +416,10 @@ class Articulation(AssetBase):
         """
         if env_ids is None:
             env_ids = slice(None)
-        
+
         # Update data buffer
         self.data.root_ang_vel_w[env_ids] = ang_vel
-        
+
         # Write to simulation
         self._backend.set_root_state(root_ang_vel=ang_vel, env_ids=env_ids)
 
@@ -429,10 +436,10 @@ class Articulation(AssetBase):
         """
         if env_ids is None:
             env_ids = slice(None)
-        
+
         # Update data buffer
         self.data.dof_pos[env_ids] = joint_pos
-        
+
         # Write to simulation
         self._backend.set_joint_state(joint_pos=joint_pos, env_ids=env_ids)
 
@@ -449,10 +456,10 @@ class Articulation(AssetBase):
         """
         if env_ids is None:
             env_ids = slice(None)
-        
+
         # Update data buffer
         self.data.dof_vel[env_ids] = joint_vel
-        
+
         # Write to simulation
         self._backend.set_joint_state(joint_vel=joint_vel, env_ids=env_ids)
 

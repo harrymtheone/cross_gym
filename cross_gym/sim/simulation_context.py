@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from cross_gym.terrains import TerrainGenerator
 from . import ArticulationView
 
 if TYPE_CHECKING:
     from . import SimulationContextCfg
+    from cross_gym.terrains import TerrainGenerator
+    from cross_gym.scene import InteractiveSceneCfg
 
 
 class SimulationContext(ABC):
@@ -200,6 +201,53 @@ class SimulationContext(ABC):
             
         Returns:
             Simulator-specific rigid object view object
+        """
+        pass
+
+    # ========== Scene Building Interface ==========
+
+    @abstractmethod
+    def build_scene(self, scene_cfg: InteractiveSceneCfg):
+        """Build complete scene from configuration.
+        
+        This method handles the simulator-specific sequence for creating:
+        - Terrain (if configured)
+        - All assets (articulations, rigid objects)
+        - Multiple environment instances
+        
+        The exact sequence is simulator-specific:
+        - IsaacGym: terrain → load assets → per-env interleaved creation
+        - Genesis: scene.add_terrain() → scene.add_entity() → scene.build()
+        
+        Args:
+            scene_cfg: Complete scene configuration
+        """
+        pass
+
+    @abstractmethod
+    def get_terrain(self) -> TerrainGenerator:
+        """Get terrain object after scene building.
+        
+        Returns:
+            TerrainGenerator instance if terrain was created, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    def get_articulation_view(self, prim_path: str) -> ArticulationView:
+        """Get articulation view by prim path.
+        
+        This is called by Articulation during initialization to bind to its
+        physics representation in the simulator.
+        
+        Args:
+            prim_path: Primitive path of the articulation
+            
+        Returns:
+            Simulator-specific articulation view
+            
+        Raises:
+            ValueError: If articulation with prim_path not found
         """
         pass
 

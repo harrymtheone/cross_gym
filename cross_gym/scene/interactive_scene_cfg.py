@@ -40,6 +40,9 @@ class InteractiveSceneCfg:
     num_envs: int = MISSING
     """Number of environment instances."""
 
+    env_spacing: float = 2.0
+    """Spacing between environment instances (meters)."""
+
     lazy_sensor_update: bool = True
     """Whether to update sensors only when accessed.
     

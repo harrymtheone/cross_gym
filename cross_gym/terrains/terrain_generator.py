@@ -58,14 +58,14 @@ class TerrainGenerator:
         self._compute_height_map()
         self._compute_terrain_types()
 
-        # Register mesh with singleton registry
-        mesh_registry = MeshRegistry.instance()
-
-        if mesh_registry is None:
-            raise RuntimeError("Mesh registry not found. Have you created an InteractiveScene?")
-
-        mesh_registry.register_mesh("terrain", self._global_trimesh)
-        print(f"[TerrainGenerator] Registered mesh 'terrain' in mesh registry")
+    @property
+    def trimesh(self):
+        """Get the global terrain trimesh.
+        
+        Returns:
+            Trimesh object representing the complete terrain
+        """
+        return self._global_trimesh
 
     @property
     def num_rows(self) -> int:

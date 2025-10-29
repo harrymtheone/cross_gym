@@ -9,7 +9,7 @@ import torch
 from cross_gym.assets import AssetBase, Articulation, ArticulationCfg
 from cross_gym.sensors import SensorBase, SensorBaseCfg
 from cross_gym.sim import SimulationContext
-from cross_gym.terrains import TerrainGenerator, TerrainGeneratorCfg
+from cross_gym.terrains import TerrainGenerator
 from . import MeshRegistry
 
 if TYPE_CHECKING:
@@ -48,6 +48,12 @@ class InteractiveScene:
     def __init__(self, cfg: InteractiveSceneCfg):
         """Initialize the interactive scene.
         
+        New flow (build-first):
+        1. Simulator builds complete scene (terrain + all assets)
+        2. Get terrain from simulator and register meshes
+        3. Parse config to create asset wrappers (query views from sim)
+        4. Initialize assets (set up data containers, buffers)
+        
         Args:
             cfg: Configuration for the scene.
         """
@@ -64,9 +70,9 @@ class InteractiveScene:
 
         # Containers for different asset types
         self.articulations: dict[str, Articulation] = {}
-        self.rigid_objects: dict[str, Any] = {}  # RigidObject not implemented yet
-        self.sensors: dict[str, SensorBase] = {}  # Sensors not implemented yet
-        self.terrain: TerrainGenerator | None = None  # Terrain not implemented yet
+        self.rigid_objects: dict[str, Any] = {}
+        self.sensors: dict[str, SensorBase] = {}
+        self.terrain: TerrainGenerator | None = None
 
         # Environment info
         self.num_envs = cfg.num_envs
@@ -74,40 +80,35 @@ class InteractiveScene:
         # Create mesh registry for sharing meshes between terrain and sensors
         self.mesh_registry = MeshRegistry(device=self.sim.device)
 
-        # Parse configuration and create assets (creates Python objects, doesn't spawn yet)
+        # Step 1: Simulator builds complete scene (terrain + all assets)
+        self.sim.build_scene(cfg)
+
+        # Step 2: Get terrain from simulator
+        self.terrain = self.sim.get_terrain()
+        self.mesh_registry.register_mesh("terrain", self.terrain.trimesh)
+
+        # Step 3: Parse config to create asset wrappers
+        # Assets query sim for their views during initialization
         self._parse_cfg()
 
-        # Spawn assets into simulation (loads URDFs, creates actors)
-        self._spawn_assets()
-
-        # Initialize all assets (creates views to access tensors)
+        # Step 4: Initialize assets (set up data containers, buffers)
         self._initialize_assets()
 
     def _parse_cfg(self):
-        """Parse the configuration and create assets in correct order.
+        """Parse configuration to create asset wrapper objects.
+        
+        Note: Scene is already built by simulator. This just creates Python wrappers
+        that bind to simulator's physics representations via views.
         
         Order matters:
-        1. Terrain - needs mesh_registry
-        2. Articulations - needs nothing special
-        3. Sensors - needs articulations to be created first
+        1. Articulations - query their views from sim
+        2. Sensors - attach to articulations (created in step 1)
         """
-        # Create terrain (registers meshes for sensors)
-        for name, cfg in self.cfg.__dict__.items():
-            if isinstance(cfg, TerrainGeneratorCfg):
-                if self.terrain is not None:
-                    raise RuntimeError(f"Multiple terrain configurations found: {name}")
-
-                self.terrain = cfg.class_type(cfg)
-                print(f"[Scene] Created terrain: {name}")
-
-        if self.terrain is None:
-            raise RuntimeError("No terrain created in the scene. Make sure terrain configuration is available.")
-
-        # Create articulations
+        # Create articulations (they query sim for views)
         for name, cfg in self.cfg.__dict__.items():
             if isinstance(cfg, ArticulationCfg):
                 self.articulations[name] = cfg.class_type(cfg)
-                print(f"[Scene] Created articulation: {name}")
+                print(f"[Scene] Created articulation wrapper: {name}")
 
         # Create sensors (attached to articulations)
         for name, cfg in self.cfg.__dict__.items():
@@ -125,49 +126,6 @@ class InteractiveScene:
             self.sensors[name] = cfg.class_type(cfg, articulation=parent_articulation)
 
             print(f"[Scene] Created sensor: {name} (attached to {cfg.articulation_name}/{cfg.body_name})")
-
-    def _spawn_assets(self):
-        """Spawn all assets into simulation.
-        
-        This must be called after _parse_cfg() and before _initialize_assets().
-        
-        Isaac Gym requires this specific order:
-        1. Add terrain to sim (GLOBAL, before envs)
-        2. Load URDF assets (once, reused)
-        3. Create envs and add actors (interleaved per-env)
-        4. Prepare simulation (allocate buffers)
-        """
-        # Step 1: Add terrain to sim (BEFORE creating envs)
-        if self.terrain is not None:
-            self.sim.add_terrain_to_sim(self.terrain)
-
-        # Step 2: Load all URDF assets (once, will be reused across envs)
-        assets_to_spawn = {}
-        for name, articulation in self.articulations.items():
-            if articulation.cfg.file is not None:
-                asset = self.sim.load_urdf_asset(
-                    urdf_path=articulation.cfg.file,
-                    cfg=articulation.cfg
-                )
-                # Store with (prim_path, cfg) as key for env creation
-                assets_to_spawn[(articulation.cfg.prim_path, articulation.cfg)] = asset
-
-        # Step 3: Create envs and add actors (Isaac Gym requires per-env interleaving)
-        self.sim.create_envs_with_actors(self.num_envs, assets_to_spawn, spacing=2.0)
-
-        # Step 4: Prepare simulation (allocate physics buffers)
-        self.sim.prepare_sim()
-
-    def _clone_environments(self):
-        """Clone assets across multiple environments.
-        
-        This creates multiple instances of each asset, one for each environment.
-        The actual cloning is handled by the simulator backend.
-        """
-        # For now, this is a placeholder
-        # The actual cloning will be implemented when we add spawners
-        # and integrate with the simulator's cloning capabilities
-        pass
 
     def _initialize_assets(self):
         """Initialize all assets after creation."""
