@@ -10,7 +10,7 @@ This extends ParkourEnv with:
 from __future__ import annotations
 
 from abc import ABC
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import torch
 
@@ -68,56 +68,55 @@ class HumanoidEnv(ParkourEnv, ABC):
         self.contact_forces_avg = torch.zeros(self.num_envs, num_feet, device=self.device)
         self.last_contacts = torch.zeros(self.num_envs, num_feet, dtype=torch.bool, device=self.device)
 
+        # Feet state tracking
+        self.last_feet_vel_xy = torch.zeros(self.num_envs, num_feet, 2, device=self.device)
+        self.feet_height = torch.zeros(self.num_envs, num_feet, device=self.device)
+        self.feet_euler_xyz = torch.zeros(self.num_envs, num_feet, 3, device=self.device)
+
         # Gait phase tracking
         if self.cfg.gait is not None:
             self.phase = torch.zeros(self.num_envs, device=self.device)
             self.phase_length_buf = torch.zeros(self.num_envs, device=self.device)
             self.gait_start = torch.zeros(self.num_envs, device=self.device)
 
-        # Feet state tracking
-        self.last_feet_vel_xy = torch.zeros(self.num_envs, num_feet, 2, device=self.device)
-        self.feet_height = torch.zeros(self.num_envs, num_feet, device=self.device)
-        self.feet_euler_xyz = torch.zeros(self.num_envs, num_feet, 3, device=self.device)
+        # Foothold detection
+        self.feet_at_edge = torch.zeros(self.num_envs, num_feet, dtype=torch.bool, device=self.device)
 
-        # Foothold detection (if terrain available)
-        if hasattr(self.cfg, 'terrain') and self.cfg.terrain is not None:
-            self.feet_at_edge = torch.zeros(self.num_envs, num_feet, dtype=torch.bool, device=self.device)
+        # # Generate foothold scan points
+        # self.foothold_pts_local = self._get_foothold_points()
+        # n_points = self.foothold_pts_local.size(1)
+        # self.foothold_pts_pos = torch.zeros(self.num_envs, num_feet, n_points, 3, device=self.device)
+        # self.foothold_pts_contact = torch.zeros(self.num_envs, num_feet, n_points, dtype=torch.bool, device=self.device)
 
-            # Generate foothold scan points
-            self.foothold_pts_local = self._get_foothold_points()
-            n_points = self.foothold_pts_local.size(1)
-            self.foothold_pts_pos = torch.zeros(self.num_envs, num_feet, n_points, 3, device=self.device)
-            self.foothold_pts_contact = torch.zeros(self.num_envs, num_feet, n_points, dtype=torch.bool, device=self.device)
+    # def _get_foothold_points(self) -> torch.Tensor:
+    #     """Generate foothold detection points in local frame.
+    #
+    #     Creates a small grid of points under each foot for contact detection.
+    #
+    #     Returns:
+    #         Foothold points in local frame. Shape: (num_envs, num_points, 3)
+    #     """
+    #     x_prop, y_prop, z_shift = self.cfg.terrain.foothold_pts
+    #
+    #     x_range = torch.linspace(x_prop[0], x_prop[1], x_prop[2], device=self.device)
+    #     y_range = torch.linspace(y_prop[0], y_prop[1], y_prop[2], device=self.device)
+    #     grid_x, grid_y = torch.meshgrid(x_range, y_range, indexing='xy')
+    #
+    #     foothold_pts = torch.stack([
+    #         grid_x.flatten(),
+    #         grid_y.flatten(),
+    #         torch.full_like(grid_x.flatten(), z_shift)
+    #     ], dim=-1)
+    #
+    #     return foothold_pts.unsqueeze(0).repeat(self.num_envs, 1, 1)
 
-    def _get_foothold_points(self) -> torch.Tensor:
-        """Generate foothold detection points in local frame.
-        
-        Creates a small grid of points under each foot for contact detection.
-        
-        Returns:
-            Foothold points in local frame. Shape: (num_envs, num_points, 3)
-        """
-        x_prop, y_prop, z_shift = self.cfg.terrain.foothold_pts
-
-        x_range = torch.linspace(x_prop[0], x_prop[1], x_prop[2], device=self.device)
-        y_range = torch.linspace(y_prop[0], y_prop[1], y_prop[2], device=self.device)
-        grid_x, grid_y = torch.meshgrid(x_range, y_range, indexing='xy')
-
-        foothold_pts = torch.stack([
-            grid_x.flatten(),
-            grid_y.flatten(),
-            torch.full_like(grid_x.flatten(), z_shift)
-        ], dim=-1)
-
-        return foothold_pts.unsqueeze(0).repeat(self.num_envs, 1, 1)
-
-    def reset_idx(self, env_ids: Sequence[int]):
+    def _reset_idx(self, env_ids: torch.Tensor):
         """Reset specified environments.
         
         Args:
             env_ids: Environment indices to reset
         """
-        super().reset_idx(env_ids)
+        super()._reset_idx(env_ids)
 
         # Reset gait phase
         if self.cfg.gait is not None:
@@ -139,27 +138,28 @@ class HumanoidEnv(ParkourEnv, ABC):
 
         # Update gait phase
         if self.cfg.gait is not None:
-            self.phase_length_buf += self.dt
-            self._update_phase()
+            self.phase_length_buf.add_(self.dt)
+            cycle_time = self.cfg.gait.cycle_time
+            self.phase[:] = ((self.phase_length_buf / cycle_time) + self.gait_start) % 1.0
 
-        # Update contact averaging
-        if self.cfg.rewards.use_contact_averaging:
-            alpha = self.cfg.rewards.contact_ema_alpha
-            contact_forces = torch.norm(
-                self.robot.data.body_force_w[:, self.feet_indices],
-                dim=-1
-            )
-            self.contact_forces_avg[self.contact_filt] = (
-                    alpha * self.contact_forces_avg[self.contact_filt] +
-                    (1 - alpha) * contact_forces[self.contact_filt]
-            )
-
-            # Update feet air time average
-            first_contact = (self.feet_air_time > 0.) & self.contact_filt
-            self.feet_air_time_avg[first_contact] = (
-                    alpha * self.feet_air_time_avg[first_contact] +
-                    (1 - alpha) * self.feet_air_time[first_contact]
-            )
+        # # Update contact averaging
+        # if self.cfg.rewards.use_contact_averaging:
+        #     alpha = self.cfg.rewards.contact_ema_alpha
+        #     contact_forces = torch.norm(
+        #         self.robot.data.body_force_w[:, self.feet_indices],
+        #         dim=-1
+        #     )
+        #     self.contact_forces_avg[self.contact_filt] = (
+        #             alpha * self.contact_forces_avg[self.contact_filt] +
+        #             (1 - alpha) * contact_forces[self.contact_filt]
+        #     )
+        #
+        #     # Update feet air time average
+        #     first_contact = (self.feet_air_time > 0.) & self.contact_filt
+        #     self.feet_air_time_avg[first_contact] = (
+        #             alpha * self.feet_air_time_avg[first_contact] +
+        #             (1 - alpha) * self.feet_air_time[first_contact]
+        #     )
 
     def post_physics_step(self):
         """Update state after physics step."""
@@ -308,17 +308,6 @@ class HumanoidEnv(ParkourEnv, ABC):
         )
 
         return heights.reshape(positions_xy.shape[0], positions_xy.shape[1])
-
-    def _update_phase(self):
-        """Update gait phase [0, 1] based on cycle time.
-        
-        Phase determines which leg should be in stance/swing.
-        Phase wraps from 0 to 1 continuously during walking.
-        """
-        cycle_time = self.cfg.gait.cycle_time
-
-        # Compute phase (wraps 0-1)
-        self.phase[:] = ((self.phase_length_buf / cycle_time) + self.gait_start) % 1.0
 
     def _get_clock_input(self, wrap_sin: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
         """Get phase clock inputs for left and right legs.

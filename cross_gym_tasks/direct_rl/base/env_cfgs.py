@@ -92,6 +92,18 @@ class LocomotionEnvCfg(DirectRLEnvCfg):
         friction_viscous_range: tuple[float, float] = (0.0, 0.1)
         """Viscous friction range (min, max) - velocity-proportional damping."""
 
+    @configclass
+    class RewardsCfg:
+        """Reward configuration."""
+
+        only_positive_rewards: bool = False
+        """Only positive rewards."""
+        only_positive_rewards_until_epoch: int = 1000
+        """Epoch until only positive rewards."""
+
+        scales: dict[str, float] = MISSING
+        """Reward scales. {reward_name: scale}"""
+
     class_type: type = LocomotionEnv
 
     num_actions: int = MISSING
@@ -101,7 +113,7 @@ class LocomotionEnvCfg(DirectRLEnvCfg):
 
     domain_rand: DomainRandCfg = DomainRandCfg()
 
-    rewards: dict = MISSING
+    rewards: RewardsCfg = RewardsCfg()
 
 
 @configclass

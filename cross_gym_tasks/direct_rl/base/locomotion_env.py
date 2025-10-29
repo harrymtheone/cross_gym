@@ -12,8 +12,7 @@ from typing import TYPE_CHECKING, Sequence
 import torch
 
 from cross_gym.assets import Articulation
-from cross_gym.envs import DirectRLEnv
-from cross_gym.managers import RewardManager
+from cross_gym.envs import VecEnvStepReturn, DirectRLEnv
 from cross_gym.terrains import TerrainGenerator
 from cross_gym.utils import math as math_utils
 
@@ -37,8 +36,8 @@ class LocomotionEnv(DirectRLEnv, ABC):
         # Locomotion-specific buffers
         self._init_buffers()
 
-        # Reward manager
-        self.reward_manager = RewardManager(cfg.rewards, self)
+        # Prepare reward functions
+        self._prepare_rewards()
 
     @property
     def robot(self) -> Articulation:
@@ -49,6 +48,7 @@ class LocomotionEnv(DirectRLEnv, ABC):
         return self.scene.terrain
 
     def _init_buffers(self):
+
         # Commands
         self.commands = torch.zeros(self.num_envs, 4, device=self.device)  # [x, y, yaw, heading]
 
@@ -124,6 +124,30 @@ class LocomotionEnv(DirectRLEnv, ABC):
             self.friction_coulomb = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
             self.friction_viscous = torch.zeros(self.num_envs, self.robot.num_dof, device=self.device)
 
+    def step(self, actions: torch.Tensor) -> VecEnvStepReturn:
+        """Step the environment.
+
+        Args:
+            actions: Actions (num_envs, action_dim)
+
+        Returns:
+            Tuple of (obs, reward, terminated, truncated, info)
+        """
+        # Process actions
+        self._process_action(actions)
+
+        # Step simulation with decimation
+        for _ in range(self.decimation):
+            self._sim_step_counter += 1
+            self._apply_action()
+            self.scene.write_data_to_sim()
+            self.sim.step()
+            self.scene.update(self.sim.physics_dt)
+
+        self._post_physics_step()
+
+        return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_truncated, self.extras
+
     def _process_action(self, actions: torch.Tensor):
         """Process policy actions into target joint positions.
 
@@ -173,6 +197,45 @@ class LocomotionEnv(DirectRLEnv, ABC):
 
         # Apply torques to robot
         self.robot.set_dof_effort_target(self.torques)
+
+    def _post_physics_step(self):
+        """Post-physics step callback."""
+        # Update counters
+        self.common_step_counter += 1  # Global step counter (for curriculum)
+        self.episode_length_buf.add_(1)  # Per-environment episode length
+
+        # Compute rewards
+        self._compute_reward()
+
+        # Check terminations
+        self.check_terminations()
+        self.reset_buf[:] = self.reset_terminated | self.reset_truncated
+
+        # Reset envs
+        reset_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+        if len(reset_ids) > 0:
+            self._reset_idx(reset_ids)
+
+        # Compute observations
+        self.obs_buf = self.compute_observations()
+
+    def check_terminations(self):
+        """Check termination conditions.
+        
+        Returns:
+            Boolean tensor (num_envs,)
+        """
+        self.reset_terminated[:] = False
+        self.reset_truncated[:] = False
+
+        # Timeout
+        self.reset_truncated[:] |= self.episode_length_buf >= self.max_episode_length
+
+        # Collision  TODO
+        # self.terminated_buf[:] |= self.robot.data.net_contact_forces[:, ]
+
+        # Height cutoff
+        self.reset_terminated[:] |= self.robot.data.root_pos_w[:, 2] < -10.
 
     def _reset_idx(self, env_ids: torch.Tensor):
         """Reset environments with domain randomization."""
@@ -320,28 +383,87 @@ class LocomotionEnv(DirectRLEnv, ABC):
     def _resample_commands(self, env_ids: Sequence[int]):
         pass
 
-    def compute_rewards(self) -> torch.Tensor:
-        """Compute rewards using reward manager.
+    # ---------------------------------------------- Reward ----------------------------------------------
+
+    @staticmethod
+    def linear_interpolation(
+            start: float,
+            end: float,
+            span: float,
+            start_it: int,
+            cur_it: int
+    ) -> float:
+        """Linear interpolation between start and end values.
         
+        Args:
+            start: Starting value
+            end: Ending value
+            span: Total span of interpolation
+            start_it: Starting iteration
+            cur_it: Current iteration
+            
         Returns:
-            Reward tensor (num_envs,)
+            Interpolated value
         """
-        return self.reward_manager.compute(self.dt)
+        cur_value = start + (end - start) * (cur_it - start_it) / span
+        cur_value = max(cur_value, min(start, end))
+        cur_value = min(cur_value, max(start, end))
+        return cur_value
 
-    def check_terminations(self):
-        """Check termination conditions.
+    def update_reward_curriculum(self, epoch: int):
+        """Update reward curriculum.
         
-        Returns:
-            Boolean tensor (num_envs,)
+        Args:
+            epoch: Current epoch
         """
-        self.reset_terminated[:] = False
-        self.reset_truncated[:] = False
+        if self.cfg.rewards.only_positive_rewards:
+            self.only_positive_rewards = epoch < self.cfg.rewards.only_positive_rewards_until_epoch
 
-        # Timeout
-        self.reset_truncated[:] |= self.episode_length_buf >= self.max_episode_length
+        for rew_name, prop in self.reward_scales_variable.items():
+            self.reward_scales[rew_name] = self.linear_interpolation(*prop, epoch)
 
-        # Collision  TODO
-        # self.terminated_buf[:] |= self.robot.data.net_contact_forces[:, ]
+    def _prepare_rewards(self):
+        """Prepare reward functions and scales."""
+        self.only_positive_rewards = self.cfg.rewards.only_positive_rewards
 
-        # Height cutoff
-        self.reset_terminated[:] |= self.robot.data.root_pos_w[:, 2] < -10.
+        self._reward_names: list[str] = []
+        self._reward_functions: list[callable] = []
+        self.reward_scales: dict[str, float] = {}
+        self.reward_scales_variable: dict[str, tuple] = {}  # For variable reward scales
+
+        for name, scale in self.cfg.rewards.scales.items():
+            self._reward_names.append(name)
+            self._reward_functions.append(getattr(self, '_reward_' + name))
+
+            # Handle variable scales (tuples for curriculum)
+            if isinstance(scale, tuple):
+                self.reward_scales[name] = scale[0]  # Start value
+                self.reward_scales_variable[name] = scale
+            elif isinstance(scale, (float, int)):
+                self.reward_scales[name] = float(scale)
+            else:
+                raise ValueError(f"Invalid reward scale type: {type(scale)}")
+
+        # Episode sums for logging
+        self.episode_sums = {
+            name: torch.zeros(self.num_envs, device=self.device)
+            for name in self.reward_scales.keys()
+        }
+
+    def _compute_reward(self):
+        """Compute total reward from individual reward terms."""
+        self.reward_buf[:] = 0.
+        self.extras['reward_cur_step'] = {}
+
+        # Sum weighted rewards
+        for i, name in enumerate(self._reward_names):
+            rew = self._reward_functions[i]() * self.reward_scales[name] * self.dt
+            self.reward_buf[:] += rew
+            self.episode_sums[name] += rew
+            self.extras['reward_cur_step'][name] = rew
+
+        self.extras['reward_raw'] = self.reward_buf.clone()
+
+        # Clip to positive if curriculum enabled
+        if self.only_positive_rewards:
+            self.reward_buf[:] = torch.clip(self.reward_buf, min=0.)
