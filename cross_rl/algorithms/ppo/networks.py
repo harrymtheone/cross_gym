@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Dict, Optional, Sequence
+from dataclasses import MISSING
+from typing import Sequence
 
 import torch
 import torch.nn as nn
 from torch.distributions import Normal
 
-from cross_gym.utils.configclass import configclass
-from cross_gym_rl.modules import make_mlp
-
-if TYPE_CHECKING:
-    pass
+from cross_gym.utils import configclass
+from cross_rl.modules import make_mlp
 
 # Disable validation for faster sampling
 Normal.set_default_validate_args = False
@@ -23,13 +21,25 @@ Normal.set_default_validate_args = False
 class ActorCriticCfg:
     """Configuration for Actor-Critic network."""
 
-    actor_hidden_dims: list = [256, 256, 128]
+    actor_input_size: int = MISSING
+    """Observation shapes. Dict mapping obs name to shape tuple."""
+
+    actor_hidden_dims: Sequence[int] = [512, 256, 128]
     """Hidden dimensions for actor MLP."""
 
-    critic_hidden_dims: list = [256, 256, 128]
+    action_size: int = MISSING
+    """Action dimension."""
+
+    critic_obs_shape: tuple[int, int] = MISSING
+    """Critic observation shape."""
+
+    scan_shape: tuple[int, int] = MISSING
+    """Scan observation shape."""
+
+    critic_hidden_dims: Sequence[int] = [512, 256, 128]
     """Hidden dimensions for critic MLP."""
 
-    activation: str = 'elu'
+    activation: nn.Module = nn.ELU()
     """Activation function."""
 
     init_noise_std: float = 1.0
@@ -37,76 +47,106 @@ class ActorCriticCfg:
 
 
 class ActorCritic(nn.Module):
-    """Actor-Critic network for PPO.
-    
-    This is a simple MLP-based actor-critic with Gaussian policy.
-    """
+    """Actor-Critic network for PPO."""
 
-    is_recurrent: bool = False
-
-    def __init__(
-            self,
-            obs_shape: Dict[str, tuple],
-            action_dim: int,
-            actor_hidden_dims: Sequence[int],
-            critic_hidden_dims: Sequence[int],
-            activation: str = 'elu',
-            init_noise_std: float = 1.0,
-    ):
+    def __init__(self, cfg: ActorCriticCfg):
         """Initialize Actor-Critic network.
         
         Args:
-            obs_shape: Dictionary of observation shapes
-            action_dim: Action dimension
-            actor_hidden_dims: Hidden layer sizes for actor
-            critic_hidden_dims: Hidden layer sizes for critic
-            activation: Activation function name
-            init_noise_std: Initial action noise std
+            cfg: Actor-Critic configuration containing:
+                - obs_shape: Dictionary of observation shapes
+                - action_dim: Action dimension
+                - actor_hidden_dims: Hidden layer sizes for actor
+                - critic_hidden_dims: Hidden layer sizes for critic
+                - activation: Activation function name
+                - init_noise_std: Initial action noise std
         """
         super().__init__()
 
-        # Compute input dimensions
-        # Assume 'policy' observation group is used
-        if 'policy' in obs_shape:
-            if isinstance(obs_shape['policy'], tuple):
-                actor_input_dim = obs_shape['policy'][0]
-            else:
-                actor_input_dim = obs_shape['policy']
-        else:
-            # Fall back to first observation group
-            first_key = list(obs_shape.keys())[0]
-            if isinstance(obs_shape[first_key], tuple):
-                actor_input_dim = obs_shape[first_key][0]
-            else:
-                actor_input_dim = obs_shape[first_key]
-
-        # Critic uses same observations as actor by default
-        critic_input_dim = actor_input_dim
-
         # Build actor network (outputs action mean)
         self.actor = make_mlp(
-            input_dim=actor_input_dim,
-            hidden_dims=actor_hidden_dims,
-            output_dim=action_dim,
-            activation=activation,
+            input_dim=cfg.actor_input_size,
+            hidden_dims=cfg.actor_hidden_dims,
+            output_dim=cfg.action_size,
+            activation=cfg.activation,
         )
 
         # Build critic network (outputs state value)
+        critic_input_size = math.prod(cfg.critic_obs_shape)
+        self.priv_enc = make_mlp(
+            input_dim=critic_input_size,
+            hidden_dims=(256, 128),
+            output_dim=64,
+            activation=cfg.activation,
+            output_activation=cfg.activation,
+        )
+
+        scan_size = math.prod(cfg.scan_shape)
+        self.scan_enc = make_mlp(
+            input_dim=scan_size,
+            hidden_dims=(256, 128),
+            output_dim=64,
+            activation=cfg.activation,
+            output_activation=cfg.activation,
+        )
+        self.edge_enc = make_mlp(
+            input_dim=scan_size,
+            hidden_dims=(256, 128),
+            output_dim=64,
+            activation=cfg.activation,
+            output_activation=cfg.activation,
+        )
+
         self.critic = make_mlp(
-            input_dim=critic_input_dim,
-            hidden_dims=critic_hidden_dims,
+            input_dim=64 + 64 + 64,
+            hidden_dims=cfg.critic_hidden_dims,
             output_dim=1,
-            activation=activation,
+            activation=cfg.activation,
         )
 
         # Action noise (learnable std)
-        self.log_std = nn.Parameter(torch.zeros(action_dim))
+        self.log_std = nn.Parameter(torch.zeros(cfg.action_size))
 
         # Reset noise
-        self.reset_std(init_noise_std)
+        self.reset_std(cfg.init_noise_std)
 
         # Current distribution (set during act())
-        self.distribution: Optional[Normal] = None
+        self.distribution: Normal | None = None
+
+    def act(self, x: torch.Tensor, eval_mode: bool = False) -> torch.Tensor:
+        """Generate actions from observations.
+        
+        Args:
+            x: Input tensor
+            eval_mode: If True, return deterministic actions (mean)
+            
+        Returns:
+            Actions (num_envs, action_dim)
+        """
+        action_mean = self.actor(x)
+
+        if eval_mode:
+            return action_mean
+
+        self.distribution = Normal(action_mean, torch.exp(self.log_std))
+        return self.distribution.sample()
+
+    def evaluate(self, priv: torch.Tensor, scan: torch.Tensor, edge: torch.Tensor) -> torch.Tensor:
+        """Evaluate value function.
+        
+        Args:
+            priv: Private observation
+            scan: Scan observation
+            edge: Edge observation
+            
+        Returns:
+            State values (num_envs, 1)
+        """
+        priv_enc = self.priv_enc(priv)
+        scan_enc = self.scan_enc(scan)
+        edge_enc = self.edge_enc(edge)
+
+        return self.critic(torch.cat([priv_enc, scan_enc, edge_enc], dim=-1))
 
     def reset_std(self, std: float):
         """Reset action standard deviation.
@@ -114,7 +154,8 @@ class ActorCritic(nn.Module):
         Args:
             std: New standard deviation value
         """
-        self.log_std.data = torch.log(torch.tensor(std)).repeat(self.log_std.shape)
+        std = torch.full(self.log_std.shape, std)
+        self.log_std.data = torch.log(std)
 
     def clip_std(self, min_std: float, max_std: float):
         """Clip action standard deviation to range.
@@ -124,56 +165,8 @@ class ActorCritic(nn.Module):
             max_std: Maximum std
         """
         self.log_std.data = torch.clamp(
-            self.log_std.data,
-            math.log(min_std),
-            math.log(max_std)
+            self.log_std.data, math.log(min_std), math.log(max_std)
         )
-
-    def act(self, observations: Dict[str, torch.Tensor], eval_mode: bool = False) -> torch.Tensor:
-        """Generate actions from observations.
-        
-        Args:
-            observations: Dictionary of observations
-            eval_mode: If True, return deterministic actions (mean)
-            
-        Returns:
-            Actions (num_envs, action_dim)
-        """
-        # Get policy observations
-        if 'policy' in observations:
-            obs = observations['policy']
-        else:
-            obs = observations[list(observations.keys())[0]]
-
-        # Forward through actor
-        action_mean = self.actor(obs)
-
-        # Create distribution
-        std = torch.exp(self.log_std)
-        self.distribution = Normal(action_mean, std)
-
-        # Sample or return mean
-        if eval_mode:
-            return action_mean
-        else:
-            return self.distribution.sample()
-
-    def evaluate(self, observations: Dict[str, torch.Tensor]) -> torch.Tensor:
-        """Evaluate value function.
-        
-        Args:
-            observations: Dictionary of observations
-            
-        Returns:
-            State values (num_envs, 1)
-        """
-        # Get critic observations (same as policy for now)
-        if 'policy' in observations:
-            obs = observations['policy']
-        else:
-            obs = observations[list(observations.keys())[0]]
-
-        return self.critic(obs)
 
     def get_actions_log_prob(self, actions: torch.Tensor) -> torch.Tensor:
         """Get log probability of actions under current distribution.
@@ -209,6 +202,3 @@ class ActorCritic(nn.Module):
         if self.distribution is None:
             raise RuntimeError("Must call act() before accessing entropy")
         return self.distribution.entropy().sum(dim=-1, keepdim=True)
-
-
-__all__ = ["ActorCritic", "ActorCriticCfg"]
