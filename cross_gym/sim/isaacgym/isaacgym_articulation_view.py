@@ -42,11 +42,11 @@ class IsaacGymArticulationView:
         self._body_names: list[str] = []
 
         # Tensors (will be initialized after prepare_sim)
-        self._root_state: torch.Tensor = None
-        self._dof_state: torch.Tensor = None
-        self._rigid_body_states: torch.Tensor = None
-        self._contact_forces: torch.Tensor = None
-        self._torques: torch.Tensor = None
+        self._root_state: torch.Tensor | None = None
+        self._dof_state: torch.Tensor | None = None
+        self._rigid_body_states: torch.Tensor | None = None
+        self._contact_forces: torch.Tensor | None = None
+        self._torques: torch.Tensor | None = None
 
     def initialize_tensors(self):
         """Initialize state tensors after sim.prepare_sim() is called."""
@@ -150,14 +150,14 @@ class IsaacGymArticulationView:
         # Only update components that are provided
         if root_pos is not None:
             self._root_state[env_ids, 0:3] = root_pos
-        
+
         if root_quat is not None:
             # Convert from (w, x, y, z) to Isaac Gym's (x, y, z, w)
             self._root_state[env_ids, 3:7] = root_quat[:, [1, 2, 3, 0]]
-        
+
         if root_lin_vel is not None:
             self._root_state[env_ids, 7:10] = root_lin_vel
-        
+
         if root_ang_vel is not None:
             self._root_state[env_ids, 10:13] = root_ang_vel
 
@@ -207,13 +207,13 @@ class IsaacGymArticulationView:
             env_ids = torch.arange(self.num_envs, device=self.device)
 
         dof_state_view = self._dof_state.view(self.num_envs, self.num_dof, 2)
-        
+
         if joint_pos is not None:
             dof_state_view[env_ids, :, 0] = joint_pos
-        
+
         if joint_vel is not None:
             dof_state_view[env_ids, :, 1] = joint_vel
-        
+
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_dof_state_tensor_indexed(
             self.sim,
