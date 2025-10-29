@@ -2,24 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Any
+from typing import TYPE_CHECKING, Any
 
 import torch
-import torch.optim as optim
 from torch.distributions import Normal, kl_divergence
 
-from cross_gym_rl.algorithms import AlgorithmBase
-from cross_gym_rl.storage import RolloutStorage
+from cross_rl.algorithms import AlgorithmBase
+from cross_rl.storage import RolloutStorage
 from .networks import ActorCritic
 
 if TYPE_CHECKING:
     from .ppo_cfg import PPOCfg
-    from cross_gym.envs import ManagerBasedRLEnv
-
-try:
-    from torch.amp import GradScaler
-except ImportError:
-    from torch.cuda.amp import GradScaler
+    from cross_gym.envs import VecEnv
 
 
 class PPO(AlgorithmBase):
@@ -30,7 +24,7 @@ class PPO(AlgorithmBase):
 
     cfg: PPOCfg
 
-    def __init__(self, cfg: PPOCfg, env: ManagerBasedRLEnv):
+    def __init__(self, cfg: PPOCfg, env: VecEnv):
         """Initialize PPO algorithm.
         
         Args:
@@ -39,22 +33,11 @@ class PPO(AlgorithmBase):
         """
         super().__init__(cfg, env)
 
-        # Get observation and action shapes
-        obs_shape = env.observation_manager.group_obs_dim
-        action_dim = sum(env.action_manager.action_term_dim)
-
         # Create actor-critic network
-        self.actor_critic = ActorCritic(
-            obs_shape=obs_shape,
-            action_dim=action_dim,
-            actor_hidden_dims=cfg.actor_hidden_dims,
-            critic_hidden_dims=cfg.critic_hidden_dims,
-            activation=cfg.activation,
-            init_noise_std=cfg.init_noise_std,
-        ).to(self.device)
+        self.actor_critic = ActorCritic(cfg.actor_critic).to(self.device)
 
         # Create optimizer
-        self.optimizer = optim.Adam(
+        self.optimizer = torch.optim.Adam(
             self.actor_critic.parameters(),
             lr=cfg.learning_rate
         )

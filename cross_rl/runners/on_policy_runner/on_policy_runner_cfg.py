@@ -36,7 +36,7 @@ class OnPolicyRunnerCfg:
     logger_backend: str = "tensorboard"
     """Logger backend ('tensorboard', 'wandb', or None)."""
 
-    log_dir: str = "logs"
+    log_root_dir: str = "logs"
     """Root directory for logs."""
 
     project_name: str = MISSING

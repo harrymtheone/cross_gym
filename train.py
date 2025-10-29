@@ -6,7 +6,7 @@ except ImportError:
 
 import argparse
 
-from cross_gym_tasks import TaskRegistry, TaskCfg, direct_tasks
+from cross_tasks import TaskRegistry, TaskCfg, direct_tasks
 
 
 def get_arg_parser():
@@ -55,7 +55,7 @@ def main():
     print(f"Num Environments: {registry.cfg.env.scene.num_envs}")
     print(f"Headless:         {registry.cfg.env.sim.headless}")
     print(f"Project:          {args.proj_name}/{args.exptid}")
-    print(f"Log Directory:    {args.log_root}")
+    print(f"Log Directory:    {args.log_dir}")
     print("=" * 80)
 
     # Create runner (TaskRegistry handles env + algorithm creation)

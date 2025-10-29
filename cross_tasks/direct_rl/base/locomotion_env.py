@@ -40,6 +40,14 @@ class LocomotionEnv(DirectRLEnv, ABC):
         self._prepare_rewards()
 
     @property
+    def num_envs(self):
+        return self.cfg.scene.num_envs
+
+    @property
+    def device(self):
+        return self.cfg.sim.device
+
+    @property
     def robot(self) -> Articulation:
         return self.scene["robot"]
 
@@ -205,7 +213,7 @@ class LocomotionEnv(DirectRLEnv, ABC):
         self.episode_length_buf.add_(1)  # Per-environment episode length
 
         # Compute rewards
-        self._compute_reward()
+        self.compute_rewards()
 
         # Check terminations
         self.check_terminations()
@@ -450,7 +458,7 @@ class LocomotionEnv(DirectRLEnv, ABC):
             for name in self.reward_scales.keys()
         }
 
-    def _compute_reward(self):
+    def compute_rewards(self):
         """Compute total reward from individual reward terms."""
         self.reward_buf[:] = 0.
         self.extras['reward_cur_step'] = {}

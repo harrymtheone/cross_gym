@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from cross_gym_rl.utils.logger import Logger, EpisodeLogger
+from cross_rl.utils.logger import Logger, EpisodeLogger
 
 if TYPE_CHECKING:
     from cross_gym.envs import VecEnv
-    from cross_gym_rl.algorithms import AlgorithmBase
+    from cross_rl.algorithms import AlgorithmBase
     from . import OnPolicyRunnerCfg
 
 

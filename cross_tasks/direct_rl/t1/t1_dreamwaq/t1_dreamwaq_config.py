@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import MISSING
+import os
 
-from cross_gym.utils import configclass
-from cross_gym_tasks import TaskCfg
-from cross_gym_tasks.direct_rl.base import HumanoidEnvCfg, ParkourEnvCfg
-from cross_gym.sim.isaacgym import IsaacGymCfg
-from cross_gym.scene import InteractiveSceneCfg
+from cross_assets import ASSETS_ROOT_DIR
+from cross_gym import terrains
 from cross_gym.assets import ArticulationCfg
-from cross_gym.terrains import TerrainGeneratorCfg
+from cross_gym.scene import InteractiveSceneCfg
+from cross_gym.sim.isaacgym import IsaacGymCfg
+from cross_gym.utils import configclass
+from cross_rl.algorithms.ppo import PPOCfg
+from cross_rl.runners import OnPolicyRunnerCfg
+from cross_tasks import TaskCfg
+from cross_tasks.direct_rl.base import HumanoidEnvCfg, ParkourEnvCfg
 from . import T1DreamWaqEnv
 
 
@@ -33,9 +36,65 @@ class T1DreamWaqEnvCfg(HumanoidEnvCfg):
     )
 
     # ========== Scene ==========
-    # NOTE: Scene robot and terrain configs should be provided when instantiating the task
-    # For now, we provide a minimal placeholder structure
-    scene: InteractiveSceneCfg = MISSING  # TODO: Provide scene with robot + terrain
+    @configclass
+    class T1SceneCfg(InteractiveSceneCfg):
+        num_envs: int = 4096
+
+        # T1 Robot
+        robot = ArticulationCfg(
+            prim_path="/World/envs/env_.*/Robot",
+            file=os.path.join(ASSETS_ROOT_DIR, "robots/T1/T1_legs.urdf"),
+
+            # Initial state
+            init_state=ArticulationCfg.InitStateCfg(
+                pos=(0.0, 0.0, 0.64),
+                rot=(1.0, 0.0, 0.0, 0.0),
+                lin_vel=(0.0, 0.0, 0.0),
+                ang_vel=(0.0, 0.0, 0.0),
+
+                # Joint positions (default standing pose)
+                joint_pos={
+                    'AAHead_yaw': 0.,
+                    # 'Head_pitch': 0.5236,
+                    'Head_pitch': 0.785,
+
+                    'Left_Shoulder_Pitch': 0.,
+                    'Left_Shoulder_Roll': -1.3,
+                    'Left_Elbow_Pitch': 0.,
+                    'Left_Elbow_Yaw': -1.,
+                    'Right_Shoulder_Pitch': 0.,
+                    'Right_Shoulder_Roll': 1.3,
+                    'Right_Elbow_Pitch': 0.,
+                    'Right_Elbow_Yaw': 1.,
+                    'Waist': 0.,
+
+                    'Left_Hip_Pitch': -0.2,
+                    'Left_Hip_Roll': 0.,
+                    'Left_Hip_Yaw': 0.,
+                    'Left_Knee_Pitch': 0.4,
+                    'Left_Ankle_Pitch': -0.25,
+                    'Left_Ankle_Roll': 0.,
+                    'Right_Hip_Pitch': -0.2,
+                    'Right_Hip_Roll': 0.,
+                    'Right_Hip_Yaw': 0.,
+                    'Right_Knee_Pitch': 0.4,
+                    'Right_Ankle_Pitch': -0.25,
+                    'Right_Ankle_Roll': 0.,
+                },
+            ),
+        )
+
+        # Terrain
+        terrain = terrains.TerrainGeneratorCfg(
+            num_rows=10,
+            num_cols=20,
+            horizontal_scale=0.02,
+            border_width=10.0,
+            curriculum=True,
+            sub_terrains={"flat": terrains.FlatCfg(proportion=1.0, size=(8.0, 8.0))},
+        )
+
+    scene: T1SceneCfg = T1SceneCfg()
 
     # ========== Control ==========
     decimation: int = 4  # Simulation steps per environment step
@@ -212,13 +271,16 @@ class T1DreamWaqCfg(TaskCfg):
     """Complete task configuration for T1 DreamWAQ training."""
 
     # Environment
-    env: T1DreamWaqEnvCfg = T1DreamWaqEnvCfg()
+    env = T1DreamWaqEnvCfg()
 
-    # Algorithm (PPO) - TODO: Fill with actual PPO config when cross_rl is ready
-    algorithm = MISSING  # from cross_rl.algorithms.ppo import PPOCfg
+    # Algorithm (PPO)
+    algorithm = PPOCfg()
+    algorithm.num_steps_per_update = 24
+    algorithm.actor_critic.actor_input_size = 50
+    algorithm.actor_critic.action_size = 13
+    algorithm.actor_critic.critic_obs_shape = (50, 62)
+    algorithm.actor_critic.scan_shape = (32, 16)
 
-    # Runner - TODO: Fill with actual runner config when cross_rl is ready
-    runner = MISSING  # from cross_rl.runners import OnPolicyRunnerCfg
-
-
-__all__ = ["T1DreamWaqEnvCfg", "T1DreamWaqCfg"]
+    # Runner
+    runner = OnPolicyRunnerCfg()
+    runner.max_iterations = 20000

@@ -51,9 +51,6 @@ class TerrainGeneratorCfg:
     horizontal_scale: float = 0.1
     """Grid resolution along x and y axes (meters per pixel)."""
 
-    vertical_scale: float = 0.005
-    """Height resolution along z axis (meters per unit)."""
-
     slope_threshold: float = 0.75
     """Slope threshold for edge detection.
     

@@ -40,12 +40,6 @@ class InteractiveSceneCfg:
     num_envs: int = MISSING
     """Number of environment instances."""
 
-    env_spacing: float = MISSING
-    """Spacing between environment origins (meters).
-    
-    Used when num_envs > 1 to arrange environments in a grid.
-    """
-
     lazy_sensor_update: bool = True
     """Whether to update sensors only when accessed.
     

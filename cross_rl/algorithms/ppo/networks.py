@@ -39,7 +39,7 @@ class ActorCriticCfg:
     critic_hidden_dims: Sequence[int] = [512, 256, 128]
     """Hidden dimensions for critic MLP."""
 
-    activation: nn.Module = nn.ELU()
+    activation: str = "elu"
     """Activation function."""
 
     init_noise_std: float = 1.0

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from cross_gym_tasks.direct_rl.base import HumanoidEnv
+from cross_tasks.direct_rl.base import HumanoidEnv
 
 if TYPE_CHECKING:
     from . import T1DreamWaqCfg

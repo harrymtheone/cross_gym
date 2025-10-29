@@ -28,5 +28,5 @@ class FlatTerrain(SubTerrain):
 
 
 @configclass
-class FlatTerrainCfg(SubTerrainBaseCfg):
+class FlatCfg(SubTerrainBaseCfg):
     class_type = FlatTerrain

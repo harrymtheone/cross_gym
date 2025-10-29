@@ -1,3 +1,3 @@
 """Trimesh terrain types."""
 
-from .flat import FlatTerrainCfg
+from .flat import FlatCfg

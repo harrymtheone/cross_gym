@@ -31,7 +31,7 @@ class ArticulationCfg(AssetBaseCfg):
         ang_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
         """Initial angular velocity (wx, wy, wz) in world frame."""
         
-        joint_pos: dict[str, float] = {}
+        joint_pos: dict[str, float] = {".*": 0.}
         """Default joint positions as pattern-to-value mapping.
         
         Example:
@@ -41,7 +41,7 @@ class ArticulationCfg(AssetBaseCfg):
             }
         """
         
-        joint_vel: dict[str, float] = {}
+        joint_vel: dict[str, float] = {".*": 0.}
         """Default joint velocities as pattern-to-value mapping."""
     
     init_state: InitStateCfg = InitStateCfg()

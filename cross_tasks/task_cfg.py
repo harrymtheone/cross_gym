@@ -6,8 +6,8 @@ from dataclasses import MISSING
 
 from cross_gym.envs import ManagerBasedRLEnvCfg, DirectRLEnvCfg
 from cross_gym.utils import configclass
-from cross_gym_rl.algorithms.ppo import PPOCfg
-from cross_gym_rl.runners import OnPolicyRunnerCfg
+from cross_rl.algorithms.ppo import PPOCfg
+from cross_rl.runners import OnPolicyRunnerCfg
 
 
 @configclass

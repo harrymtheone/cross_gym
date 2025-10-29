@@ -69,11 +69,11 @@ class TaskRegistry:
 
         # Experiment tracking
         if hasattr(args, 'proj_name'):
-            task_cfg.project_name = args.proj_name
+            task_cfg.runner.project_name = args.proj_name
         if hasattr(args, 'exptid'):
-            task_cfg.experiment_name = args.exptid
+            task_cfg.runner.experiment_name = args.exptid
         if hasattr(args, 'log_dir'):
-            task_cfg.log_root_dir = args.log_dir
+            task_cfg.runner.log_root_dir = args.log_dir
 
         # Resume from checkpoint
         if hasattr(args, 'resumeid') and args.resumeid is not None:

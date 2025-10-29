@@ -7,6 +7,33 @@ from typing import Sequence
 import torch.nn as nn
 
 
+def get_activation(activation: str) -> nn.Module:
+    """Get activation function by name.
+
+    Args:
+        activation: Activation function name ('elu', 'relu', 'tanh', etc.)
+
+    Returns:
+        Activation module
+    """
+    activation = activation.lower()
+
+    if activation == 'elu':
+        return nn.ELU()
+    elif activation == 'relu':
+        return nn.ReLU()
+    elif activation == 'leaky_relu':
+        return nn.LeakyReLU()
+    elif activation == 'tanh':
+        return nn.Tanh()
+    elif activation == 'sigmoid':
+        return nn.Sigmoid()
+    elif activation == 'selu':
+        return nn.SELU()
+    else:
+        raise ValueError(f"Unknown activation: {activation}")
+
+
 def make_mlp(
         input_dim: int,
         hidden_dims: Sequence[int],

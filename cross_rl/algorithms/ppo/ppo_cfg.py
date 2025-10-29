@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
-from typing import Literal, Optional
+from typing import Literal
 
-from cross_gym.utils.configclass import configclass
-from cross_gym_rl.algorithms import AlgorithmBaseCfg
-from . import PPO
+from cross_gym.utils import configclass
+from cross_rl.algorithms import AlgorithmBaseCfg
+from . import PPO, ActorCriticCfg
 
 
 @configclass
@@ -16,14 +16,19 @@ class PPOCfg(AlgorithmBaseCfg):
 
     class_type: type = PPO
 
-    # ========== RL Parameters ==========
+    # ========== Network Parameters ==========
+    actor_critic: ActorCriticCfg = ActorCriticCfg()
+
+    noise_std_range: tuple[float, float] = (0.3, 1.0)
+    """Range to clip action noise std."""
+
+    # ========== PPO Parameters ==========
     gamma: float = 0.99
     """Discount factor."""
 
     lam: float = 0.95
     """GAE lambda parameter."""
 
-    # ========== PPO Parameters ==========
     clip_param: float = 0.2
     """PPO clipping parameter."""
 
@@ -42,23 +47,6 @@ class PPOCfg(AlgorithmBaseCfg):
     use_clipped_value_loss: bool = True
     """Whether to use clipped value loss."""
 
-    # ========== Network Parameters ==========
-    actor_hidden_dims: list = [256, 256, 128]
-    """Hidden layer dimensions for actor network."""
-
-    critic_hidden_dims: list = [256, 256, 128]
-    """Hidden layer dimensions for critic network."""
-
-    activation: str = 'elu'
-    """Activation function name."""
-
-    # ========== Action Noise ==========
-    init_noise_std: float = 1.0
-    """Initial standard deviation for action noise."""
-
-    noise_std_range: tuple = (0.3, 1.5)
-    """Range to clip action noise std."""
-
     # ========== Learning Rate ==========
     learning_rate: float = 1e-3
     """Learning rate for optimizer."""
@@ -66,16 +54,15 @@ class PPOCfg(AlgorithmBaseCfg):
     learning_rate_schedule: Literal["adaptive", "fixed"] = "adaptive"
     """Learning rate schedule type."""
 
-    desired_kl: Optional[float] = 0.01
+    desired_kl: float | None = 0.01
     """Desired KL divergence for adaptive cross_rl rate (None = disabled)."""
 
     # ========== Training Settings ==========
-    max_grad_norm: Optional[float] = 1.0
+    max_grad_norm: float | None = 1.0
     """Maximum gradient norm for clipping (None = no clipping)."""
 
     use_amp: bool = False
     """Whether to use automatic mixed precision."""
 
-    # ========== This will be set by runner ==========
     num_steps_per_update: int = MISSING
     """Number of steps to collect before each update (set by runner)."""

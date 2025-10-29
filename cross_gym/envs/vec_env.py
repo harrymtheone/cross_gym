@@ -32,41 +32,17 @@ Returns:
 # ============================================================================
 
 class VecEnv(ABC):
-    """Base class for vectorized environments in Cross-Gym.
-    
-    This class extends gym.Env to support vectorized (parallel) environments.
-    All Cross-Gym environments inherit from this class.
-    
-    Key additions over gym.Env:
-    - num_envs: Number of parallel environments
-    - device: Torch device
-    - Vectorized observations/actions
-    """
-
-    is_vector_env: bool = True
-    """Whether this is a vectorized environment."""
-
-    def __init__(self, num_envs: int, device: torch.device):
-        """Initialize vectorized environment base.
-        
-        Args:
-            num_envs: Number of parallel environments
-            device: Torch device
-        """
-        super().__init__()
-
-        self._num_envs = num_envs
-        self._device = device
-
     @property
+    @abstractmethod
     def num_envs(self) -> int:
         """Number of parallel environments."""
-        return self._num_envs
+        pass
 
     @property
+    @abstractmethod
     def device(self) -> torch.device:
         """Device on which environment tensors are stored."""
-        return self._device
+        pass
 
     @abstractmethod
     def step(self, action: dict[str, torch.Tensor]) -> VecEnvStepReturn:

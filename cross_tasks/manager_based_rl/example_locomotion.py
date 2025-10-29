@@ -8,7 +8,7 @@ from dataclasses import MISSING
 
 from cross_gym import *
 from cross_gym.utils.configclass import configclass
-from cross_gym_tasks import TaskCfg
+from cross_tasks import TaskCfg
 
 
 # ============================================================================
@@ -20,7 +20,6 @@ class LocomotionSceneCfg(InteractiveSceneCfg):
     """Scene configuration for locomotion task."""
 
     num_envs: int = 4096
-    env_spacing: float = 4.0
 
     # Robot
     robot: ArticulationCfg = ArticulationCfg(
