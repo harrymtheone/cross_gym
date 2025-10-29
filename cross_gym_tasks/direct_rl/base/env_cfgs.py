@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 
-from cross_gym import DirectRLEnvCfg, ManagerTermCfg
+from cross_gym import DirectRLEnvCfg
 from cross_gym.utils import configclass
 from . import LocomotionEnv, ParkourEnv, HumanoidEnv
 
@@ -168,11 +168,8 @@ class ParkourEnvCfg(LocomotionEnvCfg):
 class HumanoidEnvCfg(ParkourEnvCfg):
     """Configuration for humanoid environment."""
 
-    class_type: type = HumanoidEnv
-
-    # ========== Humanoid Asset Configuration ==========
     @configclass
-    class HumanoidAssetCfg(ParkourEnvCfg.AssetCfg):
+    class HumanoidAssetCfg:
         """Humanoid-specific asset configuration."""
 
         foot_name: str = ".*foot"
@@ -181,13 +178,6 @@ class HumanoidEnvCfg(ParkourEnvCfg):
         knee_name: str = ".*knee"
         """Regex pattern to match knee bodies."""
 
-    asset: HumanoidAssetCfg = HumanoidAssetCfg()
-
-    # ========== Contact Configuration ==========
-    contact_force_threshold: float = 2.0
-    """Force threshold for contact detection (N)."""
-
-    # ========== Gait Configuration ==========
     @configclass
     class GaitCfg:
         """Gait phase configuration for bipedal locomotion."""
@@ -207,9 +197,6 @@ class HumanoidEnvCfg(ParkourEnvCfg):
         phase_offset_r: float = 0.5
         """Phase offset for right leg [0, 1] (typically 0.5 for alternating gait)."""
 
-    gait: GaitCfg = GaitCfg()
-
-    # ========== Terrain Configuration (Humanoid-specific) ==========
     @configclass
     class HumanoidTerrainCfg(ParkourEnvCfg.TerrainCfg):
         """Humanoid terrain configuration."""
@@ -224,94 +211,13 @@ class HumanoidEnvCfg(ParkourEnvCfg):
         foothold_contact_thresh: float = 0.01
         """Height threshold for foothold contact detection (m)."""
 
+    class_type: type = HumanoidEnv
+
+    asset: HumanoidAssetCfg = HumanoidAssetCfg()
+
+    contact_force_threshold: float = 2.0
+    """Force threshold for contact detection (N)."""
+
+    gait: GaitCfg = None
+
     terrain: HumanoidTerrainCfg = HumanoidTerrainCfg()
-
-    # ========== Reward Configuration ==========
-    @configclass
-    class HumanoidRewardsCfg(ParkourEnvCfg.RewardsCfg):
-        """Humanoid-specific rewards."""
-
-        # Gait rewards
-        feet_contact_number = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_contact_number,
-            weight=1.0
-        )
-
-        swing_phase = ManagerTermCfg(
-            func=HumanoidEnv._reward_swing_phase,
-            weight=0.5
-        )
-
-        support_phase = ManagerTermCfg(
-            func=HumanoidEnv._reward_support_phase,
-            weight=0.5
-        )
-
-        # Feet behavior
-        feet_clearance = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_clearance,
-            weight=0.3
-        )
-
-        feet_air_time = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_air_time,
-            weight=0.2
-        )
-
-        feet_slip = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_slip,
-            weight=-0.1
-        )
-
-        feet_stumble = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_stumble,
-            weight=-0.5
-        )
-
-        feet_rotation = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_rotation,
-            weight=0.3
-        )
-
-        # Feet positioning
-        feet_distance = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_distance,
-            weight=0.2
-        )
-
-        knee_distance = ManagerTermCfg(
-            func=HumanoidEnv._reward_knee_distance,
-            weight=0.1
-        )
-
-        # Terrain interaction
-        feet_edge = ManagerTermCfg(
-            func=HumanoidEnv._reward_feet_edge,
-            weight=-0.5
-        )
-
-        foothold = ManagerTermCfg(
-            func=HumanoidEnv._reward_foothold,
-            weight=-0.3
-        )
-
-        # Reward tuning parameters
-        feet_height_target: float = 0.05
-        """Target feet clearance height during swing (m)."""
-
-        min_feet_dist: float = 0.15
-        """Minimum desired distance between feet (m)."""
-
-        max_feet_dist: float = 0.40
-        """Maximum desired distance between feet (m)."""
-
-        tracking_sigma: float = 0.25
-        """Sigma for exponential tracking rewards."""
-
-        use_contact_averaging: bool = True
-        """Whether to use exponential moving average for contact forces."""
-
-        contact_ema_alpha: float = 0.9
-        """Alpha for contact force EMA (higher = more smoothing)."""
-
-    rewards: HumanoidRewardsCfg = HumanoidRewardsCfg()

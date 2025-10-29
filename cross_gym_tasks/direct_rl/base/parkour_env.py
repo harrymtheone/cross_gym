@@ -17,10 +17,9 @@ import torch
 from cross_gym.terrains import TerrainCommandType
 from cross_gym.utils import math as math_utils
 from cross_gym_tasks.direct_rl import LocomotionEnv
-from cross_gym_tasks.direct_rl.base.env_cfgs import ParkourEnvCfg
 
 if TYPE_CHECKING:
-    from cross_gym_tasks.direct_rl import ParkourEnvCfg
+    from . import ParkourEnvCfg
 
 
 class ParkourEnv(LocomotionEnv, ABC):
@@ -36,7 +35,7 @@ class ParkourEnv(LocomotionEnv, ABC):
         """
         super().__init__(cfg)
 
-        self.curriculum = self.cfg.terrain_curriculum
+        self.curriculum = self.cfg.parkour.terrain_curriculum
 
     def _init_buffers(self):
         """Initialize buffers for parkour."""
@@ -93,7 +92,7 @@ class ParkourEnv(LocomotionEnv, ABC):
         num_cols = self.scene.terrain.num_cols
 
         # Initialize terrain levels based on curriculum
-        max_init_level = self.cfg.max_init_terrain_level
+        max_init_level = self.cfg.parkour.max_init_terrain_level
         if max_init_level >= num_rows:
             print(f"Warning: max_init_level ({max_init_level}) >= num_rows ({num_rows}), clipping to {num_rows - 1}")
             max_init_level = num_rows - 1
@@ -270,13 +269,13 @@ class ParkourEnv(LocomotionEnv, ABC):
         # Curriculum logic for flat terrain (Omni command type)  TODO: we should obtain the actual terrain size of the terrain
         env_is_omni = torch.eq(self.env_cmd_type[env_ids], TerrainCommandType.Omni.value)
         if torch.any(env_is_omni):
-            move_up[env_is_omni] = dis_to_origin[env_is_omni] > self.cfg.terrain_size[0] / 4  # TODO: using cfg.terrain_size is a temporary expression!
-            move_down[env_is_omni] = dis_to_origin[env_is_omni] < self.cfg.terrain_size[0] / 8
+            move_up[env_is_omni] = dis_to_origin[env_is_omni] > self.cfg.parkour.terrain_size[0] / 4  # TODO: using cfg.terrain_size is a temporary expression!
+            move_down[env_is_omni] = dis_to_origin[env_is_omni] < self.cfg.parkour.terrain_size[0] / 8
 
         # Curriculum logic for stair terrain (Heading command type)  TODO: we should obtain the actual terrain size of the terrain
         env_is_heading = torch.eq(self.env_cmd_type[env_ids], TerrainCommandType.Heading.value)
         if torch.any(env_is_heading):
-            move_up[env_is_heading] = dis_to_origin[env_is_heading] > self.cfg.terrain_size[0] / 2
+            move_up[env_is_heading] = dis_to_origin[env_is_heading] > self.cfg.parkour.terrain_size[0] / 2
             move_down[env_is_heading] = dis_to_origin[env_is_heading] < 0.4 * threshold[env_is_heading]
 
         # Curriculum logic for parkour terrain (Goal command type)
@@ -330,14 +329,14 @@ class ParkourEnv(LocomotionEnv, ABC):
         # Check if reached current goal (only for Goal command type / parkour terrains)
         dist = torch.norm(self.robot.data.root_pos_w[:, :2] - self.cur_goals[:, :2], dim=1)
         env_is_goal = torch.eq(self.env_cmd_type, TerrainCommandType.Goal.value)
-        self.reached_goal_env[:] = (dist < self.cfg.next_goal_threshold) & env_is_goal
+        self.reached_goal_env[:] = (dist < self.cfg.parkour.next_goal_threshold) & env_is_goal
 
         # Update goal timer
         self.reach_goal_timer[self.reached_goal_env] += 1
         self.reach_goal_timer[~self.reached_goal_env] = 0
 
         # Move to next goal after delay
-        next_goal_flag = self.reach_goal_timer > self.cfg.reach_goal_delay / self.dt
+        next_goal_flag = self.reach_goal_timer > self.cfg.parkour.reach_goal_delay / self.dt
         self.cur_goal_idx[next_goal_flag] += 1
 
     def _update_parkour_commands(self):

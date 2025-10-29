@@ -66,6 +66,30 @@ class Articulation(AssetBase):
         """Body/link names."""
         return self.data.body_names
 
+    def find_bodies(self, name_patterns: str | list[str]) -> list[int]:
+        """Find body indices matching regex patterns.
+        
+        Args:
+            name_patterns: Single regex pattern or list of regex patterns
+            
+        Returns:
+            List of body indices matching any of the patterns
+            
+        Example:
+            >>> feet_indices = robot.find_bodies([".*_foot", ".*_ankle"])
+            >>> knee_indices = robot.find_bodies(".*_knee.*")
+        """
+        if isinstance(name_patterns, str):
+            name_patterns = [name_patterns]
+        
+        indices = []
+        for pattern in name_patterns:
+            for i, body_name in enumerate(self.body_names):
+                if re.search(pattern, body_name) and i not in indices:
+                    indices.append(i)
+        
+        return indices
+
     def initialize(self, env_ids: torch.Tensor, num_envs: int):
         """Initialize articulation after environments are created.
         

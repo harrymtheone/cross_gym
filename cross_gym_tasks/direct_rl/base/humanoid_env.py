@@ -41,63 +41,24 @@ class HumanoidEnv(ParkourEnv, ABC):
         """
         super().__init__(cfg)
 
-    def _setup_scene(self):
-        """Set up humanoid-specific scene elements."""
-        super()._setup_scene()
-
-        # Find feet and knee bodies
-        self._resolve_humanoid_bodies()
-
-    def _resolve_humanoid_bodies(self):
-        """Resolve feet and knee body indices from robot.
-        
-        Uses regex patterns from config to find body indices.
-        """
-        # Get all body names
-        body_names = self.robot.body_names
-
-        # Find feet indices
-        feet_names = self._find_bodies_matching(self.cfg.asset.foot_name)
         self.feet_indices = torch.tensor(
-            [body_names.index(name) for name in feet_names],
+            self.robot.find_bodies(self.cfg.asset.foot_name),
             dtype=torch.long,
             device=self.device
         )
-
-        # Find knee indices  
-        knee_names = self._find_bodies_matching(self.cfg.asset.knee_name)
         self.knee_indices = torch.tensor(
-            [body_names.index(name) for name in knee_names],
+            self.robot.find_bodies(self.cfg.asset.knee_name),
             dtype=torch.long,
             device=self.device
         )
 
-        print(f"[HumanoidEnv] Found {len(self.feet_indices)} feet: {feet_names}")
-        print(f"[HumanoidEnv] Found {len(self.knee_indices)} knees: {knee_names}")
-
-    def _find_bodies_matching(self, pattern: str) -> list[str]:
-        """Find body names matching a regex pattern.
-        
-        Args:
-            pattern: Regex pattern to match
-            
-        Returns:
-            List of matching body names
-        """
-        import re
-        body_names = self.robot.body_names
-        regex = re.compile(pattern)
-        return [name for name in body_names if regex.match(name)]
+        print(f"[HumanoidEnv] Found {len(self.feet_indices)} feet")
+        print(f"[HumanoidEnv] Found {len(self.knee_indices)} knees")
 
     def _init_buffers(self):
         """Initialize buffers for humanoid."""
         super()._init_buffers()
 
-        # Humanoid-specific buffers
-        self._init_humanoid_buffers()
-
-    def _init_humanoid_buffers(self):
-        """Initialize humanoid-specific buffers."""
         num_feet = len(self.feet_indices)
 
         # Feet contact tracking
@@ -108,9 +69,10 @@ class HumanoidEnv(ParkourEnv, ABC):
         self.last_contacts = torch.zeros(self.num_envs, num_feet, dtype=torch.bool, device=self.device)
 
         # Gait phase tracking
-        self.phase = torch.zeros(self.num_envs, device=self.device)
-        self.phase_length_buf = torch.zeros(self.num_envs, device=self.device)
-        self.gait_start = torch.zeros(self.num_envs, device=self.device)
+        if self.cfg.gait is not None:
+            self.phase = torch.zeros(self.num_envs, device=self.device)
+            self.phase_length_buf = torch.zeros(self.num_envs, device=self.device)
+            self.gait_start = torch.zeros(self.num_envs, device=self.device)
 
         # Feet state tracking
         self.last_feet_vel_xy = torch.zeros(self.num_envs, num_feet, 2, device=self.device)
@@ -158,10 +120,11 @@ class HumanoidEnv(ParkourEnv, ABC):
         super().reset_idx(env_ids)
 
         # Reset gait phase
-        self.phase_length_buf[env_ids] = 0.
-        self.gait_start[env_ids] = 0.5 * torch.randint(
-            0, 2, (len(env_ids),), device=self.device
-        )
+        if self.cfg.gait is not None:
+            self.phase_length_buf[env_ids] = 0.
+            self.gait_start[env_ids] = 0.5 * torch.randint(
+                0, 2, (len(env_ids),), device=self.device
+            )
 
         # Reset feet velocities
         self.last_feet_vel_xy[env_ids] = 0.
@@ -175,8 +138,9 @@ class HumanoidEnv(ParkourEnv, ABC):
         super().pre_physics_step(actions)
 
         # Update gait phase
-        self.phase_length_buf += self.dt
-        self._update_phase()
+        if self.cfg.gait is not None:
+            self.phase_length_buf += self.dt
+            self._update_phase()
 
         # Update contact averaging
         if self.cfg.rewards.use_contact_averaging:
