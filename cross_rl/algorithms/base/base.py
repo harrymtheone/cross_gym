@@ -9,7 +9,7 @@ import torch
 
 if TYPE_CHECKING:
     from . import AlgorithmBaseCfg
-    from cross_gym.envs import ManagerBasedRLEnv
+    from cross_gym.envs import VecEnv
 
 
 class AlgorithmBase(ABC):
@@ -18,7 +18,7 @@ class AlgorithmBase(ABC):
     All algorithms (PPO, SAC, PPO_AMP, DreamWaQ, etc.) inherit from this class.
     """
 
-    def __init__(self, cfg: AlgorithmBaseCfg, env: ManagerBasedRLEnv):
+    def __init__(self, cfg: AlgorithmBaseCfg, env: VecEnv):
         """Initialize algorithm.
         
         Args:
@@ -93,59 +93,26 @@ class AlgorithmBase(ABC):
         """
         pass
 
+    @abstractmethod
     def train(self):
         """Set algorithm to training mode."""
-        if hasattr(self, 'actor_critic'):
-            self.actor_critic.train()
-        if hasattr(self, 'actor'):
-            self.actor.train()
-        if hasattr(self, 'critic'):
-            self.critic.train()
+        pass
 
+    @abstractmethod
     def eval(self):
         """Set algorithm to evaluation mode."""
-        if hasattr(self, 'actor_critic'):
-            self.actor_critic.eval()
-        if hasattr(self, 'actor'):
-            self.actor.eval()
-        if hasattr(self, 'critic'):
-            self.critic.eval()
+        pass
 
-    def save(self, path: str):
-        """Save algorithm state.
-        
-        Args:
-            path: Path to save checkpoint
-        """
-        save_dict = {
-            'cfg': self.cfg,
-        }
+    @abstractmethod
+    def export(self) -> dict:
+        """export algorithm state dict."""
+        pass
 
-        if hasattr(self, 'actor_critic'):
-            save_dict['actor_critic'] = self.actor_critic.state_dict()
-        if hasattr(self, 'actor'):
-            save_dict['actor'] = self.actor.state_dict()
-        if hasattr(self, 'critic'):
-            save_dict['critic'] = self.critic.state_dict()
-        if hasattr(self, 'optimizer'):
-            save_dict['optimizer'] = self.optimizer.state_dict()
-
-        torch.save(save_dict, path)
-
-    def load(self, path: str, load_optimizer: bool = True):
+    @abstractmethod
+    def load(self, state_dict: dict):
         """Load algorithm state.
         
         Args:
-            path: Path to checkpoint
-            load_optimizer: Whether to load optimizer state
+            state_dict: State dict to load from.
         """
-        checkpoint = torch.load(path, map_location=self.device)
-
-        if hasattr(self, 'actor_critic') and 'actor_critic' in checkpoint:
-            self.actor_critic.load_state_dict(checkpoint['actor_critic'])
-        if hasattr(self, 'actor') and 'actor' in checkpoint:
-            self.actor.load_state_dict(checkpoint['actor'])
-        if hasattr(self, 'critic') and 'critic' in checkpoint:
-            self.critic.load_state_dict(checkpoint['critic'])
-        if load_optimizer and hasattr(self, 'optimizer') and 'optimizer' in checkpoint:
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
+        pass
