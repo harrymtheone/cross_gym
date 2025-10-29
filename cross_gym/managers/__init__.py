@@ -7,5 +7,5 @@ from .action_manager import ActionTerm, ActionManager, ActionManagerCfg
 from .command_manager import CommandManager, CommandManagerCfg
 from .event_manager import EventManager, EventManagerCfg
 from .observation_manager import ObservationTerm, ObservationGroupCfg, ObservationManager, ObservationManagerCfg
-from .reward_manager import RewardManager, RewardManagerCfg
+from .reward_manager import RewardManager
 from .termination_manager import TerminationManager, TerminationManagerCfg

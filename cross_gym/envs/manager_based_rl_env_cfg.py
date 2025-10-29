@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 
-from cross_gym.managers import RewardManagerCfg, TerminationManagerCfg, CommandManagerCfg
+from cross_gym.managers import TerminationManagerCfg, CommandManagerCfg
 from cross_gym.utils import configclass
 from .manager_based_env_cfg import ManagerBasedEnvCfg
 

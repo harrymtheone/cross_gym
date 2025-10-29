@@ -302,7 +302,7 @@ class SensorBase(ABC):
             min_val, max_val = axis_range
             if min_val != max_val:
                 # Sample random offset for this axis
-                random_offset = math_utils.torch_rand_float(min_val, max_val, num_env_ids, self.device)
+                random_offset = math_utils.torch_rand_float_1d(min_val, max_val, num_env_ids, self.device)
                 self._data.offset_pos_sim[env_ids, axis] = self._data.offset_pos[env_ids, axis] + random_offset
 
         # Randomize rotation offset
@@ -322,7 +322,7 @@ class SensorBase(ABC):
                 continue
 
             # Sample random rotation for this axis (in degrees, then convert to radians)
-            random_angle = math_utils.torch_rand_float(min_val, max_val, num_env_ids, self.device)
+            random_angle = math_utils.torch_rand_float_1d(min_val, max_val, num_env_ids, self.device)
             euler[:, axis] = base_euler[axis] + torch.deg2rad(random_angle)
 
         self._data.offset_quat_sim[env_ids] = math_utils.quat_from_euler_xyz(euler)

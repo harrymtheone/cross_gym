@@ -33,11 +33,12 @@ class TaskRegistry:
         # Apply command-line overrides if args provided
         if args is not None:
             self._apply_args_overrides(task_cfg, args)
-        
+
         task_cfg.validate()  # noqa
         self.cfg = task_cfg
 
-    def _apply_args_overrides(self, task_cfg: TaskCfg, args: argparse.Namespace):
+    @staticmethod
+    def _apply_args_overrides(task_cfg: TaskCfg, args: argparse.Namespace):
         """Apply command-line argument overrides to task config.
         
         Args:

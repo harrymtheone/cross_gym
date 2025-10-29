@@ -5,5 +5,6 @@ They can include PD controllers, delays, motor models, etc.
 """
 
 from .actuator_base import ActuatorCommand, ActuatorBase
-from .actuator_cfg import ActuatorBaseCfg, IdealPDActuatorCfg
 from .actuator_pd import IdealPDActuator
+
+from .actuator_cfg import ActuatorBaseCfg, IdealPDActuatorCfg

@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from cross_gym.utils import math as math_utils
 from cross_gym.utils.buffers import CircularBuffer
-from cross_gym.utils.math import torch_rand_float
 
 if TYPE_CHECKING:
     from . import SensorBase
@@ -208,8 +208,8 @@ class DelayedHistoryBuffer:
 
         # Per-environment delays
         min_delay, max_delay = sensor.cfg.delay_range
-        self._env_delays = torch_rand_float(
-            min_delay, max_delay, (self._num_envs,), self._device
+        self._env_delays = math_utils.torch_rand_float_1d(
+            min_delay, max_delay, self._num_envs, self._device
         )
 
         # Ready queue size

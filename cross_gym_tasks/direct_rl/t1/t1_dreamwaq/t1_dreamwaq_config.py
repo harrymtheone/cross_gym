@@ -1,13 +1,20 @@
+"""Configuration for T1 DreamWAQ task."""
+
 from __future__ import annotations
 
 from cross_gym.utils import configclass
+from cross_gym_tasks import TaskCfg
 from cross_gym_tasks.direct_rl.base import HumanoidEnvCfg, ParkourEnvCfg
 from . import T1DreamWaqEnv
 
 
+# ============================================================================
+# Environment Configuration
+# ============================================================================
+
 @configclass
-class T1DreamWaqCfg(HumanoidEnvCfg):
-    """Configuration for T1 DreamWAQ task."""
+class T1DreamWaqEnvCfg(HumanoidEnvCfg):
+    """Environment configuration for T1 DreamWAQ."""
 
     class_type: type = T1DreamWaqEnv
 
@@ -174,4 +181,22 @@ class T1DreamWaqCfg(HumanoidEnvCfg):
     asset: T1AssetCfg = T1AssetCfg()
 
 
-__all__ = ["T1DreamWaqCfg"]
+# ============================================================================
+# Task Configuration (Env + Algorithm + Runner)
+# ============================================================================
+
+@configclass
+class T1DreamWaqCfg(TaskCfg):
+    """Complete task configuration for T1 DreamWAQ training."""
+
+    # Environment
+    env: T1DreamWaqEnvCfg = T1DreamWaqEnvCfg()
+
+    # Algorithm (PPO) - TODO: Fill with actual PPO config
+    # algorithm: PPOCfg = PPOCfg(...)
+
+    # Runner - TODO: Fill with actual runner config
+    # runner: OnPolicyRunnerCfg = OnPolicyRunnerCfg(...)
+
+
+__all__ = ["T1DreamWaqEnvCfg", "T1DreamWaqCfg"]

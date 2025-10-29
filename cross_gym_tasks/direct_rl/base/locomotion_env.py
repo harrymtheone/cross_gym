@@ -259,16 +259,16 @@ class LocomotionEnv(DirectRLEnv, ABC):
         # Randomize xy position
         if self.cfg.domain_rand.randomize_start_pos_xy:
             min_val, max_val = self.cfg.domain_rand.randomize_start_pos_xy_range
-            root_pos[:, :2] += math_utils.torch_rand_float(
+            root_pos[:, :2] += math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, 2), device=self.device
             )
 
         # Randomize z height
         if self.cfg.domain_rand.randomize_start_pos_z:
             min_val, max_val = self.cfg.domain_rand.randomize_start_pos_z_range
-            root_pos[:, 2] += torch.abs(math_utils.torch_rand_float(
-                min_val, max_val, (num_resets, 1), device=self.device
-            ).squeeze(1))
+            root_pos[:, 2] += torch.abs(math_utils.torch_rand_float_1d(
+                min_val, max_val, num_resets, device=self.device
+            ))
 
         # Orientation: default + random rotation
         root_quat = self.robot.data.default_root_quat[env_ids].clone()
@@ -278,15 +278,15 @@ class LocomotionEnv(DirectRLEnv, ABC):
 
         if self.cfg.domain_rand.randomize_start_pitch:
             min_val, max_val = self.cfg.domain_rand.randomize_start_pitch_range
-            rand_euler[:, 1] = math_utils.torch_rand_float(
-                min_val, max_val, (num_resets, 1), device=self.device
-            ).squeeze(1)
+            rand_euler[:, 1] = math_utils.torch_rand_float_1d(
+                min_val, max_val, num_resets, device=self.device
+            )
 
         if self.cfg.domain_rand.randomize_start_yaw:
             min_val, max_val = self.cfg.domain_rand.randomize_start_yaw_range
-            rand_euler[:, 2] = math_utils.torch_rand_float(
-                min_val, max_val, (num_resets, 1), device=self.device
-            ).squeeze(1)
+            rand_euler[:, 2] = math_utils.torch_rand_float_1d(
+                min_val, max_val, num_resets, device=self.device
+            )
 
         # Apply random rotation
         if self.cfg.domain_rand.randomize_start_pitch or self.cfg.domain_rand.randomize_start_yaw:
@@ -299,7 +299,7 @@ class LocomotionEnv(DirectRLEnv, ABC):
 
         if self.cfg.domain_rand.randomize_start_lin_vel_xy:
             min_val, max_val = self.cfg.domain_rand.randomize_start_lin_vel_xy_range
-            root_lin_vel[:, :2] += math_utils.torch_rand_float(
+            root_lin_vel[:, :2] += math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, 2), device=self.device
             )
 
@@ -318,13 +318,13 @@ class LocomotionEnv(DirectRLEnv, ABC):
 
         if self.cfg.domain_rand.randomize_start_dof_pos:
             min_val, max_val = self.cfg.domain_rand.randomize_start_dof_pos_range
-            joint_pos[:] += math_utils.torch_rand_float(
+            joint_pos[:] += math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
         if self.cfg.domain_rand.randomize_start_dof_vel:
             min_val, max_val = self.cfg.domain_rand.randomize_start_dof_vel_range
-            joint_vel[:] += math_utils.torch_rand_float(
+            joint_vel[:] += math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
@@ -343,38 +343,38 @@ class LocomotionEnv(DirectRLEnv, ABC):
         # Randomize motor offsets (calibration error)
         if self.cfg.domain_rand.randomize_motor_offset:
             min_val, max_val = self.cfg.domain_rand.motor_offset_range
-            self.motor_offsets[env_ids] = math_utils.torch_rand_float(
+            self.motor_offsets[env_ids] = math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
         # Randomize PD gain multipliers (model uncertainty)
         if self.cfg.domain_rand.randomize_gains:
             min_val, max_val = self.cfg.domain_rand.kp_multiplier_range
-            self.p_gain_multiplier[env_ids] = math_utils.torch_rand_float(
+            self.p_gain_multiplier[env_ids] = math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
             min_val, max_val = self.cfg.domain_rand.kd_multiplier_range
-            self.d_gain_multiplier[env_ids] = math_utils.torch_rand_float(
+            self.d_gain_multiplier[env_ids] = math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
         # Randomize torque multiplier (actuator variance)
         if self.cfg.domain_rand.randomize_torque:
             min_val, max_val = self.cfg.domain_rand.torque_multiplier_range
-            self.torque_multiplier[env_ids] = math_utils.torch_rand_float(
+            self.torque_multiplier[env_ids] = math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
         # Randomize friction (joint resistance)
         if self.cfg.domain_rand.randomize_friction:
             min_val, max_val = self.cfg.domain_rand.friction_coulomb_range
-            self.friction_coulomb[env_ids] = math_utils.torch_rand_float(
+            self.friction_coulomb[env_ids] = math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 
             min_val, max_val = self.cfg.domain_rand.friction_viscous_range
-            self.friction_viscous[env_ids] = math_utils.torch_rand_float(
+            self.friction_viscous[env_ids] = math_utils.torch_rand_float_2d(
                 min_val, max_val, (num_resets, self.robot.num_dof), device=self.device
             )
 

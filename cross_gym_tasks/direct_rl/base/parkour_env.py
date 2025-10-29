@@ -16,7 +16,7 @@ import torch
 
 from cross_gym.terrains import TerrainCommandType
 from cross_gym.utils import math as math_utils
-from cross_gym_tasks.direct_rl import LocomotionEnv
+from . import LocomotionEnv
 
 if TYPE_CHECKING:
     from . import ParkourEnvCfg
@@ -238,10 +238,10 @@ class ParkourEnv(LocomotionEnv, ABC):
             raise ValueError(f"Abs of range_max ({max_val}) should be >= clip ({min_clip})")
 
         if min_val * max_val > 0:  # Same sign
-            return math_utils.torch_rand_float(min_val, max_val, (num_samples, 1), device=self.device).squeeze(1)
+            return math_utils.torch_rand_float_1d(min_val, max_val, num_samples, device=self.device)
 
         else:  # Different sign (spans zero)
-            cmd = math_utils.torch_rand_float(min_val, max_val, (num_samples, 1), device=self.device).squeeze(1)
+            cmd = math_utils.torch_rand_float_1d(min_val, max_val, num_samples, device=self.device)
 
             # Scale to avoid dead zone [-clip, clip]
             ratio = torch.where(

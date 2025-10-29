@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, TYPE_CHECKING, Tuple, Any
+from typing import Callable, TYPE_CHECKING, Any
 
 import torch
 
-from .manager_base import ManagerBase
-from .manager_term_cfg import ManagerTermCfg
+from . import ManagerBase, ManagerTermCfg
 
 if TYPE_CHECKING:
     from cross_gym.envs import ManagerBasedEnv
@@ -32,13 +31,13 @@ class RewardManager(ManagerBase):
         super().__init__(cfg, env)
 
         # Reward terms
-        self.reward_terms: Dict[str, Tuple[Callable, dict, float]] = {}
+        self.reward_terms: dict[str, tuple[Callable, dict, float]] = {}
 
         # Parse configuration
         self._prepare_terms()
 
         # Logging buffers
-        self.episode_sums: Dict[str, torch.Tensor] = {}
+        self.episode_sums: dict[str, torch.Tensor] = {}
         for name in self.reward_terms.keys():
             self.episode_sums[name] = torch.zeros(env.num_envs, device=env.device)
 
