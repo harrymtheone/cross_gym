@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 
-from cross_core.base import ArticulationConfigBase
+from cross_core.base import ArticulationBaseCfg
 from cross_core.utils import configclass
 from . import Articulation
 
 
 @configclass
-class ArticulationCfg(ArticulationConfigBase):
+class ArticulationCfg(ArticulationBaseCfg):
     """Configuration for articulated assets (robots).
     
     An articulation is a collection of rigid bodies (links) connected by joints.

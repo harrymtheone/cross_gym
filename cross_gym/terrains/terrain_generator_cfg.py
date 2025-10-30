@@ -91,6 +91,3 @@ class TerrainGeneratorCfg:
     # ========== Randomization ==========
     seed: int | None = None
     """Random seed for reproducibility. If None, uses random seed."""
-
-
-__all__ = ["TerrainGeneratorCfg"]

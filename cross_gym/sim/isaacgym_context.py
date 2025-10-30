@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from cross_core.base import SimulationContextBase
+from cross_core.base import SimulationContext
 
 if TYPE_CHECKING:
     from .isaacgym_cfg import IsaacGymCfg
-    from cross_core.base import SceneConfigBase
+    from cross_core.base import SceneBaseCfg
 
 try:
     from isaacgym import gymapi, gymutil  # noqa
@@ -27,7 +27,7 @@ except ImportError as e:
         ISAACGYM_AVAILABLE = False
 
 
-class IsaacGymContext(SimulationContextBase):
+class IsaacGymContext(SimulationContext):
     """IsaacGym-specific implementation of SimulationContext."""
 
     cfg: IsaacGymCfg
@@ -284,7 +284,7 @@ class IsaacGymContext(SimulationContextBase):
 
     # ========== Scene Building Interface Implementation ==========
 
-    def build_scene(self, scene_cfg: SceneConfigBase):
+    def build_scene(self, scene_cfg: SceneBaseCfg):
         """Build complete scene for IsaacGym.
 
         IsaacGym requires specific sequence:

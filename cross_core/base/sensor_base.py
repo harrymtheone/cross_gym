@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+
 import torch
 
+from cross_core.utils import configclass
 
-class SensorConfigBase(ABC):
+
+@configclass
+class SensorBaseCfg(ABC):
     """Base class for sensor configuration."""
     pass
 
@@ -16,12 +20,15 @@ class SensorBase(ABC):
     
     This defines a common interface for sensors across different simulators.
     """
-    
+
+    def __init__(self, cfg: SensorBaseCfg):
+        self.cfg = cfg
+
     @abstractmethod
     def update(self):
         """Update sensor measurements."""
         pass
-    
+
     @abstractmethod
     def get_data(self) -> torch.Tensor:
         """Get current sensor data.
@@ -30,10 +37,9 @@ class SensorBase(ABC):
             Sensor measurements
         """
         pass
-    
+
     @property
     @abstractmethod
     def num_envs(self) -> int:
         """Number of parallel environments."""
         pass
-

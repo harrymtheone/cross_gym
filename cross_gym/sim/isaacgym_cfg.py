@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from cross_core.base import SimulationConfigBase
+from typing import TYPE_CHECKING
+
+from cross_core.base import SimulationContextCfg
 from cross_core.utils import configclass
+
+if TYPE_CHECKING:
+    from .isaacgym_context import IsaacGymContext
 
 
 @configclass
@@ -33,14 +38,17 @@ class PhysXCfg:
 
 
 @configclass
-class IsaacGymCfg(SimulationConfigBase):
+class IsaacGymCfg(SimulationContextCfg):
     """Configuration for IsaacGym simulator.
     
     This contains all the parameters specific to IsaacGym.
+    
+    Usage:
+        cfg = IsaacGymCfg(...)
+        sim = cfg.class_type(cfg)  # Creates IsaacGymContext instance
     """
 
-    # Backend identifier
-    backend: str = "isaacgym"
+    class_type: type[IsaacGymContext] = None  # Set after IsaacGymContext is defined
 
     # Basic simulation parameters
     dt: float = 0.005

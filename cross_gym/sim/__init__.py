@@ -3,9 +3,6 @@
 from .isaacgym_context import IsaacGymContext
 from .isaacgym_cfg import IsaacGymCfg, PhysXCfg
 
-__all__ = [
-    "IsaacGymContext",
-    "IsaacGymCfg",
-    "PhysXCfg",
-]
+# Set class_type to enable cfg.class_type(cfg) pattern
+IsaacGymCfg.class_type = IsaacGymContext
 

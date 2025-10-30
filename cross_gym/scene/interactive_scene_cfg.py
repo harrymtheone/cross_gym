@@ -1,19 +1,27 @@
 """IsaacGym-specific scene configuration."""
 
-from cross_core.base import SceneConfigBase
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from cross_core.base import SceneBaseCfg
 from cross_core.utils import configclass
+
+if TYPE_CHECKING:
+    from .interactive_scene import IsaacGymInteractiveScene
 
 
 @configclass
-class IsaacGymSceneCfg(SceneConfigBase):
+class IsaacGymSceneCfg(SceneBaseCfg):
     """IsaacGym-specific scene configuration.
     
     Attributes are dynamically added for articulations, sensors, terrain.
-    Backend identifier allows task configs to select simulator.
+    
+    Usage:
+        scene = scene_cfg.class_type(scene_cfg, sim_context)
     """
     
-    backend: str = "isaacgym"
-    """Backend identifier."""
+    class_type: type[IsaacGymInteractiveScene] = None  # Set in __init__.py
     
     num_envs: int = 1024
     """Number of parallel environments."""

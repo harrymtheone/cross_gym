@@ -3,8 +3,6 @@
 from .interactive_scene import IsaacGymInteractiveScene
 from .interactive_scene_cfg import IsaacGymSceneCfg
 
-__all__ = [
-    "IsaacGymInteractiveScene",
-    "IsaacGymSceneCfg",
-]
+# Set class_type to enable cfg.class_type(cfg, sim) pattern
+IsaacGymSceneCfg.class_type = IsaacGymInteractiveScene
 
