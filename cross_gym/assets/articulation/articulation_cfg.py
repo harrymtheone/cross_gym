@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import MISSING
-
 from cross_core.base import ArticulationBaseCfg
 from cross_core.utils import configclass
 from . import Articulation
@@ -22,33 +20,33 @@ class ArticulationCfg(ArticulationBaseCfg):
     # Asset file
     prim_path: str = "/World/envs/env_.*/Asset"
     """Path pattern to articulation in scene."""
-    
+
     file: str | None = None
     """Path to URDF/USD file."""
-    
+
     # Articulation-specific initial state
     @configclass
     class InitStateCfg:
         pos: tuple[float, float, float] = (0.0, 0.0, 0.0)
         """Initial position (x, y, z) in world frame."""
-        
+
         rot: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
         """Initial rotation as quaternion (w, x, y, z) in world frame."""
-        
+
         lin_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
         """Initial linear velocity (vx, vy, vz) in world frame."""
-        
+
         ang_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
         """Initial angular velocity (wx, wy, wz) in world frame."""
-        
+
         joint_pos: dict[str, float] = None
         """Default joint positions as pattern-to-value mapping."""
-        
+
         joint_vel: dict[str, float] = None
         """Default joint velocities as pattern-to-value mapping."""
-    
+
     init_state: InitStateCfg = InitStateCfg()
-    
+
     # Collision group (-1 = global collision, 0+ = group ID)
     collision_group: int = 0
 
