@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from cross_core.utils import configclass
 
 if TYPE_CHECKING:
-    from .scene_base import SceneBaseCfg
+    from . import InteractiveSceneCfg
 
 
 @configclass
@@ -20,7 +20,7 @@ class SimulationContextCfg(ABC):
     The class_type attribute should reference the simulator context class.
     """
 
-    class_type: type[SimulationContext] = MISSING
+    class_type: type = MISSING
 
 
 class SimulationContext(ABC):
@@ -42,7 +42,7 @@ class SimulationContext(ABC):
         self._is_stopped = False
 
     @abstractmethod
-    def build_scene(self, scene_cfg: SceneBaseCfg):
+    def build_scene(self, scene_cfg: InteractiveSceneCfg):
         """Build the simulation scene from configuration.
         
         Args:

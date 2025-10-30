@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 @configclass
-class SceneBaseCfg(ABC):
+class InteractiveSceneCfg(ABC):
     """Base class for scene configuration.
     
     All simulator-specific scene configs should inherit from this.
@@ -23,11 +23,11 @@ class SceneBaseCfg(ABC):
         scene = scene_cfg.class_type(scene_cfg, sim_context)
     """
 
-    class_type: type[InteractiveSceneBase] = MISSING
-    num_envs: int  # Number of parallel environments
+    class_type: type = MISSING
+    num_envs: int = MISSING
 
 
-class InteractiveSceneBase(ABC):
+class InteractiveScene(ABC):
     """Abstract base class for interactive scene.
     
     This manages articulations, sensors, and terrain in a simulator-agnostic way.
