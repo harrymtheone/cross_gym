@@ -5,7 +5,7 @@ import trimesh
 
 from cross_gym.terrains import TerrainTypeID, TerrainCommandType, SubTerrain, SubTerrainBaseCfg
 from cross_gym.terrains.utils import create_rectangle
-from cross_gym.utils import configclass
+from cross_core.utils import configclass
 
 
 class ParkourFlat(SubTerrain):

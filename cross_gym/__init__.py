@@ -1,31 +1,15 @@
-"""Cross-Gym: A cross-platform robot reinforcement cross_rl framework.
+"""cross_gym: IsaacGym backend for cross-platform robotics framework."""
 
-Cross-Gym provides a unified interface for robot RL across multiple simulators
-(IsaacGym, Genesis, IsaacSim) with an architecture inspired by IsaacLab.
-"""
+from .sim import IsaacGymContext, IsaacGymCfg, PhysXCfg
+from .scene import IsaacGymInteractiveScene, IsaacGymSceneCfg
 
-__version__ = "0.1.0"
+__all__ = [
+    # Simulation
+    "IsaacGymContext",
+    "IsaacGymCfg",
+    "PhysXCfg",
+    # Scene
+    "IsaacGymInteractiveScene",
+    "IsaacGymSceneCfg",
+]
 
-# Core simulator imports
-from .sim import *
-
-# Actuators
-from .actuators import *
-
-# Asset imports
-from .assets import *
-
-# Scene imports
-from .scene import *
-
-# Environment imports
-from .envs import *
-
-# Manager imports
-from .managers import *
-
-# MDP terms
-from .envs import mdp
-
-# Terrain
-from . import terrains

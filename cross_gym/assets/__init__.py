@@ -1,5 +1,8 @@
-"""Asset classes for robots and objects."""
+"""Assets for IsaacGym backend."""
 
-from .asset_base import AssetBase, AssetBaseCfg
+from .articulation import ArticulationCfg, IsaacGymArticulationView
 
-from .articulation import *
+__all__ = [
+    "ArticulationCfg",
+    "IsaacGymArticulationView",
+]

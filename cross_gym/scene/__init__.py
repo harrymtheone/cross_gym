@@ -1,5 +1,10 @@
-"""Scene management for Cross-Gym."""
+"""IsaacGym scene management."""
 
-from .mesh_registry import MeshRegistry
-from .interactive_scene import InteractiveScene
-from .interactive_scene_cfg import InteractiveSceneCfg
+from .interactive_scene import IsaacGymInteractiveScene
+from .interactive_scene_cfg import IsaacGymSceneCfg
+
+__all__ = [
+    "IsaacGymInteractiveScene",
+    "IsaacGymSceneCfg",
+]
+

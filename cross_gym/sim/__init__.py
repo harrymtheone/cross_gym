@@ -1,7 +1,11 @@
-"""Simulator abstraction layer."""
+"""IsaacGym simulation context."""
 
-from .articulation_view import ArticulationView
-from .simulation_context import SimulationContext
-from .simulation_context_cfg import SimulationContextCfg
+from .isaacgym_context import IsaacGymContext
+from .isaacgym_cfg import IsaacGymCfg, PhysXCfg
 
-from .isaacgym import *
+__all__ = [
+    "IsaacGymContext",
+    "IsaacGymCfg",
+    "PhysXCfg",
+]
+

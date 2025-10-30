@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 
-from cross_gym.utils import configclass
+from cross_core.utils import configclass
 from . import SubTerrainBaseCfg, TerrainGenerator
 
 

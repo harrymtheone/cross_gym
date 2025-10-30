@@ -9,7 +9,7 @@ from enum import Enum
 import numpy as np
 import trimesh
 
-from cross_gym.utils import configclass
+from cross_core.utils import configclass
 
 
 class TerrainTypeID(Enum):
