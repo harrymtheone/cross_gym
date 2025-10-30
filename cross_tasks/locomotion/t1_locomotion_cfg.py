@@ -25,7 +25,7 @@ class T1LocomotionCfg:
     def get_scene_cfg(self):
         """Get scene configuration (contains both scene and sim params)."""
         from cross_gym.scene import IsaacGymSceneCfg, PhysXCfg, SimCfg
-        from cross_gym.assets import ArticulationCfg
+        from cross_gym.assets import GymArticulationCfg
         from cross_core.terrains import TerrainGeneratorCfg
         from cross_core.terrains.trimesh_terrains import FlatTerrainCfg
         
@@ -60,16 +60,16 @@ class T1LocomotionCfg:
             ),
             
             # Robot
-            robot=ArticulationCfg(
+            robot=GymArticulationCfg(
                 prim_path="/World/envs/env_.*/T1",
                 file="cross_assets/robots/T1/T1_serial.urdf",
-                init_state=ArticulationCfg.InitStateCfg(
+                init_state=GymArticulationCfg.InitStateCfg(
                     pos=(0.0, 0.0, 0.42),
                     rot=(1.0, 0.0, 0.0, 0.0),
                     joint_pos={".*": 0.0},
                     joint_vel={".*": 0.0},
                 ),
-                asset_options=ArticulationCfg.AssetOptionsCfg(
+                asset_options=GymArticulationCfg.AssetOptionsCfg(
                     fix_base_link=False,
                     default_dof_drive_mode=3,
                     armature=0.01,

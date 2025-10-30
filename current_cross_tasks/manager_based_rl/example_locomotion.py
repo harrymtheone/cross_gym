@@ -22,10 +22,10 @@ class LocomotionSceneCfg(InteractiveSceneCfg):
     num_envs: int = 4096
 
     # Robot
-    robot: ArticulationCfg = ArticulationCfg(
+    robot: GymArticulationCfg = GymArticulationCfg(
         prim_path="{ENV_REGEX_NS}/Robot",
         file=MISSING,  # User must provide URDF path
-        init_state=ArticulationCfg.InitStateCfg(
+        init_state=GymArticulationCfg.InitStateCfg(
             pos=(0.0, 0.0, 0.6),
             rot=(1.0, 0.0, 0.0, 0.0),
         ),

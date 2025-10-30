@@ -12,7 +12,7 @@ from isaacgym import gymapi, gymutil
 
 from cross_core.base import InteractiveScene, SensorBaseCfg
 from cross_core.terrains import TerrainGeneratorCfg
-from cross_gym.assets.articulation import ArticulationCfg, IsaacGymArticulation
+from cross_gym.assets.articulation import GymArticulationCfg, GymArticulation
 from cross_gym.sensors import HeightScannerCfg, RayCasterCfg
 
 if TYPE_CHECKING:
@@ -137,7 +137,7 @@ class IsaacGymInteractiveScene(InteractiveScene):
                 self._add_terrain(cfg)
 
             # Handle articulations
-            elif isinstance(cfg, ArticulationCfg):
+            elif isinstance(cfg, GymArticulationCfg):
                 asset = self._load_urdf(cfg)
                 assets_to_spawn[name] = (asset, cfg)
 
@@ -215,7 +215,7 @@ class IsaacGymInteractiveScene(InteractiveScene):
 
         print(f"[IsaacGym] Added terrain ({vertices.shape[0]} vertices)")
 
-    def _load_urdf(self, cfg: ArticulationCfg):
+    def _load_urdf(self, cfg: GymArticulationCfg):
         """Load URDF using IsaacGym API directly."""
         # Configure asset options
         asset_options = gymapi.AssetOptions()
@@ -250,9 +250,9 @@ class IsaacGymInteractiveScene(InteractiveScene):
         """Create articulations, sensors, and other scene entities."""
         # Step 1: Create articulations
         for name, cfg in self.cfg.__dict__.items():
-            if isinstance(cfg, ArticulationCfg):
+            if isinstance(cfg, GymArticulationCfg):
                 # Create articulation with direct gym/sim access
-                self._articulations[name] = IsaacGymArticulation(
+                self._articulations[name] = GymArticulation(
                     cfg=cfg,
                     actor_handles=self.actors[name],
                     gym=self.gym,

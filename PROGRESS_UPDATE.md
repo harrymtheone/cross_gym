@@ -63,10 +63,11 @@ All major components implemented and tested:
 - ✅ Zero linter errors across all files
 
 **What's Working:**
+
 ```python
 from cross_gym.sim import IsaacGymCfg
 from cross_gym.scene import IsaacGymSceneCfg
-from cross_gym.assets import ArticulationCfg
+from cross_gym.assets import GymArticulationCfg
 
 # Create simulator
 sim_cfg = IsaacGymCfg(dt=0.005, headless=True)
@@ -75,7 +76,7 @@ sim = sim_cfg.class_type(sim_cfg)
 # Create scene
 scene_cfg = IsaacGymSceneCfg(
     num_envs=4,
-    robot=ArticulationCfg(...)
+    robot=GymArticulationCfg(...)
 )
 scene = scene_cfg.class_type(scene_cfg, sim)
 

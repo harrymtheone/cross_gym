@@ -159,10 +159,10 @@ class T1LocomotionCfg:
     def get_scene_cfg(self):
         # Import IsaacGym backend
         from cross_gym.scene import IsaacGymSceneCfg
-        from cross_gym.assets import ArticulationCfg
-        
+        from cross_gym.assets import GymArticulationCfg
+
         return IsaacGymSceneCfg(...)
-    
+
     # To switch to Genesis: just change imports!
 ```
 

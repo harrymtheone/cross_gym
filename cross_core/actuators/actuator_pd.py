@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 import torch
 
-from cross_core.base import ActuatorBase, ActuatorCommand
+from . import ActuatorBase, ActuatorCommand
 
 
 class IdealPDActuator(ActuatorBase):
@@ -58,9 +60,9 @@ class IdealPDActuator(ActuatorBase):
         command.joint_efforts.copy_(self.applied_torque)
         command.joint_positions = None  # Clear pos target
         command.joint_velocities = None  # Clear vel target
-        
+
         return command
 
-    def reset(self, env_ids: torch.Tensor):
+    def reset(self, env_ids: Sequence[int] | None = None):
         """Reset actuator state (no internal state for ideal PD)."""
         pass

@@ -199,12 +199,12 @@ scene.render()
 class T1LocomotionCfg:
     def get_scene_cfg(self):
         from cross_gym.scene import IsaacGymSceneCfg, SimCfg
-        from cross_gym.assets import ArticulationCfg
-        
+        from cross_gym.assets import GymArticulationCfg
+
         return IsaacGymSceneCfg(
             num_envs=self.num_envs,
             sim=SimCfg(dt=0.005, ...),
-            robot=ArticulationCfg(...),
+            robot=GymArticulationCfg(...),
         )
 
 # To switch to Genesis: just change imports!

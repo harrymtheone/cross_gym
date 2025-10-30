@@ -8,7 +8,7 @@ from . import Articulation
 
 
 @configclass
-class ArticulationCfg(ArticulationBaseCfg):
+class GymArticulationCfg(ArticulationBaseCfg):
     """Configuration for articulated assets (robots).
     
     An articulation is a collection of rigid bodies (links) connected by joints.

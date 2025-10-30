@@ -6,7 +6,7 @@ import os
 
 from cross_assets import ASSETS_ROOT_DIR
 from cross_gym import terrains
-from cross_gym.assets import ArticulationCfg
+from cross_gym.assets import GymArticulationCfg
 from cross_gym.scene import InteractiveSceneCfg
 from cross_gym.sim.isaacgym import IsaacGymCfg
 from cross_gym.utils import configclass
@@ -41,12 +41,12 @@ class T1DreamWaqEnvCfg(HumanoidEnvCfg):
         num_envs: int = 4096
 
         # T1 Robot
-        robot = ArticulationCfg(
+        robot = GymArticulationCfg(
             prim_path="/World/envs/env_.*/Robot",
             file=os.path.join(ASSETS_ROOT_DIR, "robots/T1/T1_legs.urdf"),
 
             # Initial state
-            init_state=ArticulationCfg.InitStateCfg(
+            init_state=GymArticulationCfg.InitStateCfg(
                 pos=(0.0, 0.0, 0.64),
                 rot=(1.0, 0.0, 0.0, 0.0),
                 lin_vel=(0.0, 0.0, 0.0),

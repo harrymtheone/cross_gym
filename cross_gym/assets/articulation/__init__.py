@@ -1,5 +1,4 @@
 """Articulation assets for IsaacGym."""
 
-from .articulation import Articulation
-from .articulation_cfg import ArticulationCfg
-from .isaacgym_articulation import IsaacGymArticulation
+from .isaacgym_articulation import GymArticulation
+from .isaacgym_articulation_cfg import GymArticulationCfg

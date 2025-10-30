@@ -2,5 +2,5 @@
 import isaacgym
 
 from .scene import IsaacGymInteractiveScene, IsaacGymSceneCfg, PhysXCfg, SimCfg
-from .assets import ArticulationCfg, IsaacGymArticulation
+from .assets import GymArticulationCfg, GymArticulation
 from .sensors import HeightScanner, HeightScannerCfg, RayCaster, RayCasterCfg
