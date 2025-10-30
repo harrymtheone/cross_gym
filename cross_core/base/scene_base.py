@@ -44,56 +44,12 @@ class InteractiveScene(ABC):
         self.device = device
 
     @abstractmethod
-    def get_articulation(self, name: str) -> ArticulationBase:
-        """Get articulation by name.
-        
-        Args:
-            name: Name of the articulation (from config attribute name)
-            
-        Returns:
-            Articulation object
-            
-        Raises:
-            ValueError: If articulation not found
-        """
-        pass
-
-    @abstractmethod
-    def get_sensor(self, name: str) -> SensorBase:
-        """Get sensor by name.
-        
-        Args:
-            name: Name of the sensor (from config attribute name)
-            
-        Returns:
-            Sensor object
-            
-        Raises:
-            ValueError: If sensor not found
-        """
-        pass
-
-    @abstractmethod
-    def get_terrain(self):
-        """Get terrain object if configured.
-        
-        Returns:
-            Terrain object or None
-        """
-        pass
-
-    @abstractmethod
     def step(self, render: bool = True):
         """Step physics simulation.
         
         Args:
             render: Whether to render after stepping
         """
-        pass
-
-    @abstractmethod
-    def reset(self):
-        """Reset the simulation."""
         pass
 
     @abstractmethod

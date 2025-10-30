@@ -10,9 +10,10 @@ import numpy as np
 import torch
 from isaacgym import gymapi, gymutil
 
-from cross_core.base import InteractiveScene
+from cross_core.base import InteractiveScene, SensorBaseCfg
 from cross_core.terrains import TerrainGeneratorCfg
 from cross_gym.assets.articulation import ArticulationCfg, IsaacGymArticulation
+from cross_gym.sensors import HeightScannerCfg, RayCasterCfg
 
 if TYPE_CHECKING:
     from . import IsaacGymSceneCfg
@@ -39,7 +40,7 @@ class IsaacGymInteractiveScene(InteractiveScene):
         super().__init__(cfg, device)
 
         # Initialize IsaacGym directly (no wrapper needed)
-        self.gym = gymapi.acquire_gym()
+        self.gym = gymapi.acquire_gym()  # noqa
         self.sim = self._create_sim()
         self.viewer = self._create_viewer() if not self.cfg.sim.headless else None
 
@@ -52,13 +53,12 @@ class IsaacGymInteractiveScene(InteractiveScene):
         self._sensors = {}
 
         # Build scene
-        self._build_scene()
+        self._create_envs()
 
         # Initialize articulations and sensors
-        self._init_articulations()
+        self._create_scene_entities()
 
         # Counters
-        self._sim_step_counter = 0
         self._is_stopped = False
 
     def _create_sim(self):
@@ -119,8 +119,8 @@ class IsaacGymInteractiveScene(InteractiveScene):
 
         return viewer
 
-    def _build_scene(self):
-        """Build complete scene using IsaacGym API directly.
+    def _create_envs(self):
+        """Create environments with terrain, assets, and actors.
         
         IsaacGym sequence:
         1. Add terrain (global, before envs)
@@ -128,27 +128,61 @@ class IsaacGymInteractiveScene(InteractiveScene):
         3. Create envs and add actors (interleaved)
         4. Prepare sim
         """
-
+        # Step 1 & 2: Process terrain and load assets
         assets_to_spawn = {}
 
-        # Step 1 & 2: Process terrain and load assets
-        for attr_name, attr_value in self.cfg.__dict__.items():
+        for name, cfg in self.cfg.__dict__.items():
             # Handle terrain
-            if isinstance(attr_value, TerrainGeneratorCfg):
-                self._add_terrain(attr_value)
+            if isinstance(cfg, TerrainGeneratorCfg):
+                self._add_terrain(cfg)
 
             # Handle articulations
-            elif isinstance(attr_value, ArticulationCfg):
-                asset = self._load_urdf(attr_value)
-                assets_to_spawn[attr_value.prim_path] = (asset, attr_value)
+            elif isinstance(cfg, ArticulationCfg):
+                asset = self._load_urdf(cfg)
+                assets_to_spawn[name] = (asset, cfg)
 
         # Step 3: Create envs with actors (IsaacGym interleaved requirement)
-        self._create_envs(assets_to_spawn)
+        num_per_row = int(math.sqrt(self.cfg.num_envs))
+        spacing = self.cfg.env_spacing
+
+        lower = gymapi.Vec3(-spacing, -spacing, 0.0)
+        upper = gymapi.Vec3(spacing, spacing, spacing)
+
+        self.envs = []
+        self.actors = {name: [] for name in assets_to_spawn.keys()}
+
+        for env_id in range(self.cfg.num_envs):
+            # Create environment
+            env_handle = self.gym.create_env(self.sim, lower, upper, num_per_row)
+            self.envs.append(env_handle)
+
+            # Add all actors to this env
+            for name, (asset, cfg) in assets_to_spawn.items():
+                initial_pose = gymapi.Transform()
+                initial_pose.p = gymapi.Vec3(*cfg.init_state.pos)
+                initial_pose.r = gymapi.Quat(
+                    cfg.init_state.rot[1],  # x
+                    cfg.init_state.rot[2],  # y
+                    cfg.init_state.rot[3],  # z
+                    cfg.init_state.rot[0]  # w
+                )
+
+                actor_handle = self.gym.create_actor(
+                    env_handle,
+                    asset,
+                    initial_pose,
+                    name,
+                    env_id,
+                    cfg.collision_group,
+                    0
+                )
+
+                self.actors[name].append(actor_handle)
 
         # Step 4: Prepare simulation
         self.gym.prepare_sim(self.sim)
 
-        print(f"[IsaacGym] Scene built with {self.num_envs} environments")
+        print(f"[IsaacGym] Created {self.cfg.num_envs} environments")
 
     def _add_terrain(self, terrain_cfg):
         """Add terrain using IsaacGym API directly."""
@@ -212,82 +246,44 @@ class IsaacGymInteractiveScene(InteractiveScene):
 
         return asset
 
-    def _create_envs(self, assets_to_spawn: dict):
-        """Create environments and add actors using IsaacGym API directly."""
-        num_per_row = int(math.sqrt(self.cfg.num_envs))
-        spacing = self.cfg.env_spacing
-
-        lower = gymapi.Vec3(-spacing, -spacing, 0.0)
-        upper = gymapi.Vec3(spacing, spacing, spacing)
-
-        self.envs = []
-        self.actors = {prim_path: [] for prim_path in assets_to_spawn.keys()}
-
-        for env_id in range(self.cfg.num_envs):
-            # Create environment
-            env_handle = self.gym.create_env(self.sim, lower, upper, num_per_row)
-            self.envs.append(env_handle)
-
-            # Add all actors to this env
-            for prim_path, (asset, cfg) in assets_to_spawn.items():
-                initial_pose = gymapi.Transform()
-                initial_pose.p = gymapi.Vec3(*cfg.init_state.pos)
-                initial_pose.r = gymapi.Quat(
-                    cfg.init_state.rot[1],  # x
-                    cfg.init_state.rot[2],  # y
-                    cfg.init_state.rot[3],  # z
-                    cfg.init_state.rot[0]  # w
-                )
-
-                actor_name = prim_path.split('/')[-1].replace('.*', '')
-                actor_handle = self.gym.create_actor(
-                    env_handle,
-                    asset,
-                    initial_pose,
-                    actor_name,
-                    env_id,
-                    cfg.collision_group,
-                    0
-                )
-
-                self.actors[prim_path].append(actor_handle)
-
-        print(f"[IsaacGym] Created {self.cfg.num_envs} environments")
-
-    def _init_articulations(self):
-        """Create articulation wrappers using direct IsaacGym API."""
-
-        for attr_name, attr_value in self.cfg.__dict__.items():
-            if isinstance(attr_value, ArticulationCfg):
+    def _create_scene_entities(self):
+        """Create articulations, sensors, and other scene entities."""
+        # Step 1: Create articulations
+        for name, cfg in self.cfg.__dict__.items():
+            if isinstance(cfg, ArticulationCfg):
                 # Create articulation with direct gym/sim access
-                articulation = IsaacGymArticulation(
-                    cfg=attr_value,
-                    actor_handles=self.actors[attr_value.prim_path],
+                self._articulations[name] = IsaacGymArticulation(
+                    cfg=cfg,
+                    actor_handles=self.actors[name],
                     gym=self.gym,
                     sim=self.sim,
                     device=self.device,
                     num_envs=self.cfg.num_envs
                 )
-                self._articulations[attr_name] = articulation
+
+        # Step 2: Create sensors (sensors typically need to reference articulations)
+        # For now, we create sensors that are defined in the config
+        # Sensors may need to be attached to specific articulations - this is
+        # a simplified implementation that can be extended based on sensor requirements
+        for name, cfg in self.cfg.__dict__.items():
+            if isinstance(cfg, SensorBaseCfg):
+                # Find the articulation this sensor should attach to
+                # This assumes sensors have a way to identify their target articulation
+                # For now, we'll need to extend this based on sensor configuration
+                # TODO: Implement sensor creation logic based on sensor type and articulation assignment
+                if isinstance(cfg, HeightScannerCfg):
+                    # HeightScanner needs an articulation - determine which one
+                    # For now, skip or implement based on requirements
+                    pass
+                elif isinstance(cfg, RayCasterCfg):
+                    # RayCaster needs an articulation - determine which one  
+                    # For now, skip or implement based on requirements
+                    pass
 
     def step(self, render: bool = True):
         """Step physics using direct IsaacGym API."""
         self.gym.simulate(self.sim)
         self.gym.fetch_results(self.sim, True)
-        self._sim_step_counter += 1
-
-        if render and (self._sim_step_counter % self.cfg.sim.render_interval == 0):
-            self.render()
-
-    def reset(self):
-        """Reset simulation using direct IsaacGym API."""
-        self.gym.prepare_sim(self.sim)
-        self._sim_step_counter = 0
-
-        # Warm up physics
-        for _ in range(2):
-            self.gym.simulate(self.sim)
-            self.gym.fetch_results(self.sim, True)
 
     def render(self):
         """Render using direct IsaacGym API."""
