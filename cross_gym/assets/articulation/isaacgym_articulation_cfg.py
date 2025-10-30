@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from cross_core.base import ArticulationBaseCfg
 from cross_core.utils import configclass
-from . import Articulation
+from . import GymArticulation
 
 
 @configclass
@@ -15,7 +15,7 @@ class GymArticulationCfg(ArticulationBaseCfg):
     This is typically used for robots.
     """
 
-    class_type: type = Articulation
+    class_type: type = GymArticulation
 
     # Asset file
     prim_path: str = "/World/envs/env_.*/Asset"

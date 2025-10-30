@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+from cross_core.terrains import TerrainGeneratorCfg
+from cross_core.terrains.trimesh_terrains import FlatTerrainCfg
 from cross_core.utils import configclass
 from cross_env.envs import DirectRLEnvCfg
+from cross_gym.assets import GymArticulationCfg
+from cross_gym.scene import IsaacGymSceneCfg, PhysXCfg, SimCfg
 
 
 @configclass
 class T1LocomotionCfg:
     """T1 robot locomotion task configuration."""
-    
+
     num_envs: int = 4096
     decimation: int = 4
     episode_length_s: float = 20.0
-    
+
     def get_env_cfg(self) -> DirectRLEnvCfg:
         """Get environment configuration."""
         return DirectRLEnvCfg(
@@ -21,18 +25,13 @@ class T1LocomotionCfg:
             decimation=self.decimation,
             episode_length_s=self.episode_length_s,
         )
-    
+
     def get_scene_cfg(self):
         """Get scene configuration (contains both scene and sim params)."""
-        from cross_gym.scene import IsaacGymSceneCfg, PhysXCfg, SimCfg
-        from cross_gym.assets import GymArticulationCfg
-        from cross_core.terrains import TerrainGeneratorCfg
-        from cross_core.terrains.trimesh_terrains import FlatTerrainCfg
-        
         return IsaacGymSceneCfg(
             num_envs=self.num_envs,
             env_spacing=3.0,
-            
+
             sim=SimCfg(
                 dt=0.005,
                 substeps=1,
@@ -44,7 +43,7 @@ class T1LocomotionCfg:
                     num_velocity_iterations=1,
                 ),
             ),
-            
+
             # Terrain
             terrain=TerrainGeneratorCfg(
                 size=(8.0, 8.0),
@@ -58,7 +57,7 @@ class T1LocomotionCfg:
                     "flat": FlatTerrainCfg(proportion=1.0),
                 },
             ),
-            
+
             # Robot
             robot=GymArticulationCfg(
                 prim_path="/World/envs/env_.*/T1",
