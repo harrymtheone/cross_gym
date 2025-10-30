@@ -3,18 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import MISSING
+from typing import TYPE_CHECKING
 
 import torch
 
-from cross_core.utils import configclass
-
-
-@configclass
-class ArticulationBaseCfg(ABC):
-    """Base class for articulation configuration."""
-
-    prim_path: str = MISSING  # Path/pattern to articulation in scene
+if TYPE_CHECKING:
+    from . import ArticulationBaseCfg
 
 
 class ArticulationBase(ABC):
