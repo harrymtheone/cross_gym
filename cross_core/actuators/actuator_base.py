@@ -27,9 +27,9 @@ class ActuatorBase(ABC):
     def __init__(
             self,
             cfg,
-            joint_names: list[str],
-            joint_ids: torch.Tensor | slice,
             num_envs: int,
+            dof_names: list[str],
+            dof_ids: torch.Tensor | slice,
             device: torch.device,
             stiffness: torch.Tensor | float = 0.0,
             damping: torch.Tensor | float = 0.0,
@@ -42,8 +42,8 @@ class ActuatorBase(ABC):
         
         Args:
             cfg: Actuator configuration
-            joint_names: Names of joints in this actuator group
-            joint_ids: Indices of joints (tensor or slice(None))
+            dof_names: Names of joints in this actuator group
+            dof_ids: Indices of joints (tensor or slice(None))
             num_envs: Number of environments
             device: Torch device
             stiffness: URDF stiffness values
@@ -54,10 +54,10 @@ class ActuatorBase(ABC):
             velocity_limit: URDF velocity limit values
         """
         self.cfg = cfg
-        self.joint_names = joint_names
-        self.dof_indices = joint_ids
         self.num_envs = num_envs
-        self.num_joints = len(joint_names)
+        self.dof_names = dof_names
+        self.dof_indices = dof_ids
+        self.num_dofs = len(dof_names)
         self.device = device
 
         # Parse parameters: merge URDF (default) with config values
@@ -70,8 +70,8 @@ class ActuatorBase(ABC):
         self.velocity_limit = self._parse_dof_parameter(cfg.velocity_limit, velocity_limit)
 
         # Initialize buffers for computed and applied torques
-        self.computed_torque = torch.zeros(num_envs, self.num_joints, device=device)
-        self.applied_torque = torch.zeros(num_envs, self.num_joints, device=device)
+        self.computed_torque = torch.zeros(num_envs, self.num_dofs, device=device)
+        self.applied_torque = torch.zeros(num_envs, self.num_dofs, device=device)
 
     def _parse_dof_parameter(
             self,
@@ -91,19 +91,19 @@ class ActuatorBase(ABC):
         Returns:
             Parsed parameter as tensor with shape (num_envs, num_joints)
         """
-        param = torch.zeros(self.num_envs, self.num_joints, device=self.device)
+        param = torch.zeros(self.num_envs, self.num_dofs, device=self.device)
 
         if cfg_value is None:
             # Use default from URDF
             if isinstance(default_value, (int, float)):
                 param[:] = float(default_value)
             elif isinstance(default_value, torch.Tensor):
-                if default_value.shape == (self.num_envs, self.num_joints):
+                if default_value.shape == (self.num_envs, self.num_dofs):
                     param[:] = default_value
                 else:
                     raise ValueError(
                         f"Default tensor shape mismatch: {default_value.shape} vs "
-                        f"expected {(self.num_envs, self.num_joints)}"
+                        f"expected {(self.num_envs, self.num_dofs)}"
                     )
             else:
                 raise TypeError(f"Default value must be float or tensor, got {type(default_value)}")
@@ -114,7 +114,7 @@ class ActuatorBase(ABC):
                 param[:] = float(cfg_value)
             elif isinstance(cfg_value, dict):
                 # Dictionary with joint names as keys
-                for joint_idx, joint_name in enumerate(self.joint_names):
+                for joint_idx, joint_name in enumerate(self.dof_names):
                     if joint_name in cfg_value:
                         param[:, joint_idx] = float(cfg_value[joint_name])
                     else:

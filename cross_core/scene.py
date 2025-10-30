@@ -11,7 +11,7 @@ import torch
 from cross_core.utils import configclass
 
 if TYPE_CHECKING:
-    from . import ArticulationBase, SensorBase
+    from cross_core.base import ArticulationBase, SensorBase
 
 
 @configclass
