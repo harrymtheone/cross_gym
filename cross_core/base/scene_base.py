@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import MISSING
 from typing import TYPE_CHECKING
 
+import torch
+
 from cross_core.utils import configclass
 
 if TYPE_CHECKING:
@@ -17,10 +19,10 @@ class InteractiveSceneCfg(ABC):
     """Base class for scene configuration.
     
     All simulator-specific scene configs should inherit from this.
-    The class_type attribute should reference the scene class.
+    Scene owns simulation initialization and scene building.
     
     Usage:
-        scene = scene_cfg.class_type(scene_cfg, sim_context)
+        scene = scene_cfg.class_type(scene_cfg, device)
     """
 
     class_type: type = MISSING
@@ -30,9 +32,16 @@ class InteractiveSceneCfg(ABC):
 class InteractiveScene(ABC):
     """Abstract base class for interactive scene.
     
-    This manages articulations, sensors, and terrain in a simulator-agnostic way.
-    Each backend provides its own implementation.
+    Scene owns everything:
+    - Simulator initialization
+    - Scene building (terrain, assets, envs)
+    - Asset management (articulations, sensors)
+    - Physics control (step, reset, render)
     """
+
+    def __init__(self, cfg: InteractiveSceneCfg, device: torch.device):
+        self.cfg = cfg
+        self.device = device
 
     @abstractmethod
     def get_articulation(self, name: str) -> ArticulationBase:
@@ -73,8 +82,33 @@ class InteractiveScene(ABC):
         """
         pass
 
+    @abstractmethod
+    def step(self, render: bool = True):
+        """Step physics simulation.
+        
+        Args:
+            render: Whether to render after stepping
+        """
+        pass
+
+    @abstractmethod
+    def reset(self):
+        """Reset the simulation."""
+        pass
+
+    @abstractmethod
+    def render(self):
+        """Render the scene."""
+        pass
+
     @property
     @abstractmethod
     def num_envs(self) -> int:
         """Number of parallel environments."""
+        pass
+
+    @property
+    @abstractmethod
+    def is_stopped(self) -> bool:
+        """Whether simulation has been stopped."""
         pass
