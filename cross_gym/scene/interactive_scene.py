@@ -122,9 +122,7 @@ class InteractiveScene:
                     f"which does not exist. Available articulations: {list(self.articulations.keys())}"
                 )
 
-            parent_articulation = self.articulations[cfg.articulation_name]
-            self.sensors[name] = cfg.class_type(cfg, articulation=parent_articulation)
-
+            self.sensors[name] = cfg.class_type(cfg, articulation=self.articulations[cfg.articulation_name])
             print(f"[Scene] Created sensor: {name} (attached to {cfg.articulation_name}/{cfg.body_name})")
 
     def _initialize_assets(self):

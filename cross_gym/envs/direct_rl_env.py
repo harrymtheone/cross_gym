@@ -70,6 +70,18 @@ class DirectRLEnv(VecEnv):
         self.episode_length_buf = torch.zeros(self.num_envs, dtype=torch.int, device=self.device)
         self.extras = {}
 
+    @property
+    def step_dt(self):
+        return self.cfg.decimation * self.cfg.sim.dt
+
+    @property
+    def physics_dt(self):
+        return self.cfg.sim.dt
+
+    @property
+    def decimation(self):
+        return self.cfg.decimation
+
     # ===== Abstract Methods (Users Implement) =====
 
     @abstractmethod
@@ -140,7 +152,7 @@ class DirectRLEnv(VecEnv):
             self._apply_action()
             self.scene.write_data_to_sim()
             self.sim.step()
-            self.scene.update(self.sim.physics_dt)
+            self.scene.update(self.physics_dt)
 
         # Update counters
         self.common_step_counter += 1  # Global step counter (for curriculum)
@@ -201,4 +213,5 @@ class DirectRLEnv(VecEnv):
 
     def close(self):
         """Clean up resources."""
+
         SimulationContext.clear_instance()

@@ -9,7 +9,6 @@ import numpy as np
 import scipy.ndimage
 import trimesh
 
-from cross_gym.scene import MeshRegistry
 from . import SubTerrain
 from .utils import trimesh_to_height_map_cuda, edge_detection, create_rectangle
 

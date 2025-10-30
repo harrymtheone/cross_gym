@@ -9,7 +9,7 @@ import torch
 from cross_tasks.direct_rl.base import HumanoidEnv
 
 if TYPE_CHECKING:
-    from . import T1DreamWaqCfg
+    from . import T1DreamWaqEnvCfg
 
 
 class T1DreamWaqEnv(HumanoidEnv):
@@ -18,16 +18,16 @@ class T1DreamWaqEnv(HumanoidEnv):
     Inherits from HumanoidEnv and provides T1-specific configurations.
     """
 
-    cfg: T1DreamWaqCfg
+    cfg: T1DreamWaqEnvCfg
 
-    def __init__(self, cfg: T1DreamWaqCfg):
+    def __init__(self, cfg: T1DreamWaqEnvCfg):
         """Initialize T1 DreamWAQ environment.
         
         Args:
             cfg: T1 DreamWAQ configuration
         """
         super().__init__(cfg)
-        
+
         # T1-specific joint indices
         self.yaw_roll_dof_indices = torch.tensor(
             self.robot.find_joints(['Waist', 'Roll', 'Yaw']),
@@ -62,4 +62,3 @@ class T1DreamWaqEnv(HumanoidEnv):
 
 
 __all__ = ["T1DreamWaqEnv"]
-

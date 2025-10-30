@@ -75,39 +75,11 @@ class SimulationContext(ABC):
     def clear_instance(cls):
         """Clear the singleton instance."""
         if cls._instance is not None:
-            cls._instance = None
-
-    # ========== Core Properties ==========
+            del cls._instance
 
     @property
-    def device(self) -> torch.device:
-        """The device on which simulation runs."""
+    def device(self):
         return self._device
-
-    @property
-    def physics_dt(self) -> float:
-        """The physics timestep in seconds."""
-        return self.cfg.dt
-
-    @property
-    def render_dt(self) -> float:
-        """The rendering timestep in seconds."""
-        return self.cfg.dt * self.cfg.render_interval
-
-    @property
-    def sim_step_counter(self) -> int:
-        """The number of physics steps since simulation start/reset."""
-        return self._sim_step_counter
-
-    # ========== Simulation State ==========
-
-    def is_playing(self) -> bool:
-        """Check if simulation is currently playing."""
-        return self._is_playing
-
-    def is_stopped(self) -> bool:
-        """Check if simulation is stopped."""
-        return self._is_stopped
 
     # ========== Core Abstract Methods ==========
 
@@ -139,7 +111,7 @@ class SimulationContext(ABC):
     # ========== Asset Spawning (Must be implemented by backends) ==========
 
     @abstractmethod
-    def add_terrain_to_sim(self, terrain: TerrainGenerator):
+    def _add_terrain_to_sim(self, terrain: TerrainGenerator):
         """Add terrain to simulation (BEFORE creating envs).
         
         Args:

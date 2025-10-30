@@ -150,7 +150,7 @@ class LocomotionEnv(DirectRLEnv, ABC):
             self._apply_action()
             self.scene.write_data_to_sim()
             self.sim.step()
-            self.scene.update(self.sim.physics_dt)
+            self.scene.update(self.physics_dt)
 
         self._post_physics_step()
 
